@@ -62,7 +62,7 @@ typedef struct mctp_packet_t
 {
     struct mctp_packet_t* next;
     size_t buffer_len; 
-    uint8_t buffer[];
+    uint8_t* buffer;
 }
 mctp_packet_t;
 
@@ -116,7 +116,7 @@ typedef struct mctp_binding_t
     size_t binding_header_size;
     size_t binding_trailer_size;
     void* transport_binding;
-    int (*packet_tx)(struct mctp_binding_t* binding, mctp_packet_t* packet);
+    void (*packet_tx)(struct mctp_binding_t* binding, mctp_packet_t* packet);
 }
 mctp_binding_t;
 

@@ -19,8 +19,5 @@
     "cmake.buildBeforeRun": true,
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
     "cortex-debug.openocdPath": "${env:PICO_OPENOCD}",
-    "cortex-debug.variableUseNaturalFormat": true,
-    "files.associations": {
-        "platform.h": "c"
-    }
+    "cortex-debug.variableUseNaturalFormat": false
 }

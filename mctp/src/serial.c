@@ -32,7 +32,7 @@ static mctp_serial_trailer_t* mctp_serial_get_binding_trailer(
     return (mctp_serial_trailer_t*)(&packet->buffer[packet->buffer_len - MCTP_SERIAL_TRAILER_SIZE]);
 }
 
-static int mctp_serial_packet_tx(
+static void mctp_serial_packet_tx(
     mctp_binding_t* binding,
 	mctp_packet_t* packet
 )
@@ -91,6 +91,6 @@ void mctp_serial_set_raw_tx_callback(
     void* raw_tx_args
 )
 {
-    serial_binding->raw_tx_callback;
+    serial_binding->raw_tx_callback = raw_tx_callback;
     serial_binding->raw_tx_args = raw_tx_args;
 }

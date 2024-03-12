@@ -147,13 +147,22 @@ static mctp_header_t* mctp_packet_header(
     return (mctp_header_t*)(&packet->buffer[binding->binding_header_size]);
 }
 
+static uint8_t* mctp_packet_data(
+    mctp_packet_t* packet,
+    mctp_binding_t* binding
+)
+{
+    return (uint8_t*)(&packet->buffer[binding->binding_header_size + sizeof(mctp_header_t)]);
+}
+
+
 static void mctp_packet_tx(
     mctp_bus_t* bus, 
     mctp_packet_t* packet
 )
 {
     bus->binding->packet_tx(
-        &bus->binding,
+        bus->binding,
         packet
     );
 }
@@ -169,6 +178,7 @@ static void mctp_packet_queue_tx(
 		mctp_packet_tx(bus, packet);
 
         bus->tx_queue_head = packet->next;
+        free(packet->buffer);
         free(packet);
 	}
 }
@@ -188,7 +198,7 @@ static void mctp_message_disassemble(
     size_t max_payload_size = MCTP_PAYLOAD_SIZE(
         bus->binding->max_transaction_size
     );
-    size_t bytes_processed = 0;
+    size_t payload_offset = 0;
     
 
     mctp_header_t mctp_header = {
@@ -199,22 +209,26 @@ static void mctp_message_disassemble(
         .version = bus->binding->version,
     };
 
-    while (bytes_processed < message_len)
+    while (payload_offset < message_len)
     {
-        size_t bytes_left = message_len - bytes_processed;
+        size_t bytes_left = message_len - payload_offset;
         size_t payload_size = MIN(bytes_left, max_payload_size);
 
-        size_t packet_size = MCTP_PACKET_SIZE(
+        packet = malloc(sizeof(mctp_packet_t));
+        memset(packet, 0, sizeof(mctp_packet_t));
+        
+        packet->buffer_len = MCTP_PACKET_SIZE(
             MCTP_TRANSACTION_SIZE(payload_size),
             bus->binding->binding_header_size,
             bus->binding->binding_trailer_size
         );
+        packet->buffer = calloc(packet->buffer_len, sizeof(uint8_t));
 
-        packet = malloc(sizeof(mctp_packet_t) + packet_size);
-        memset(packet, 0, sizeof(mctp_packet_t) + packet_size);
+        mctp_header_t* packet_header = mctp_packet_header(packet, bus->binding);
+        uint8_t* packet_data = mctp_packet_data(packet, bus->binding);
 
-        mctp_header_t* packet_header = mctp_packet_header(packet, &bus->binding);
         memcpy(packet_header, &mctp_header, sizeof(mctp_header_t));
+        memcpy(packet_data, &message[payload_offset], sizeof(mctp_header_t));
 
         if (tx_queue_tail != NULL)
         {
@@ -228,11 +242,11 @@ static void mctp_message_disassemble(
 		tx_queue_tail = packet;
         
         mctp_header.packet_sequence++;
-        bytes_processed += payload_size;
+        payload_offset += payload_size;
     }
 
-    mctp_packet_header(bus->tx_queue_head, &bus->binding)->start_of_message = true;
-    mctp_packet_header(tx_queue_tail, &bus->binding)->end_of_message = true;
+    mctp_packet_header(bus->tx_queue_head, bus->binding)->start_of_message = true;
+    mctp_packet_header(tx_queue_tail, bus->binding)->end_of_message = true;
 }
 
 void mctp_message_tx(
@@ -252,4 +266,6 @@ void mctp_message_tx(
         message, 
         message_len
     );
+
+    mctp_packet_queue_tx(mctp_inst->bus);
 }
