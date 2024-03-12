@@ -213,8 +213,9 @@ int main()
     mctp_serial_set_raw_tx_callback(serial_binding, mctp_uart_raw_tx_callback, NULL);
     mctp_register_bus(mctp_inst, mctp_serial_get_core_binding(serial_binding), serial_binding, requester_eid);
 
-    size_t req_len = sizeof(mctp_generic_header_t) + sizeof(mctp_ctrl_header_t);
+    size_t req_len = sizeof(mctp_generic_header_t) + sizeof(mctp_ctrl_header_t) + 0xFF;
     uint8_t get_eid_req[req_len];
+    memset(get_eid_req, 0, req_len);
     mctp_generic_header_t* base = (mctp_generic_header_t*)get_eid_req;
     mctp_ctrl_header_t* ctrl_header = (mctp_ctrl_header_t*)(base + 1);
 

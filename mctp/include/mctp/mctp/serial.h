@@ -8,7 +8,6 @@
 
 #define MCTP_SERIAL_FRAME_FLAG              0x7E
 #define MCTP_SERIAL_REVISION                0x01
-#define MCTP_SERIAL_MAX_TRANSACTION_SIZE    0xFF 
 
 typedef struct mctp_serial_header_t
 {

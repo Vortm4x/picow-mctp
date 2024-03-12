@@ -194,12 +194,7 @@ static void mctp_message_disassemble(
 {
     mctp_packet_t* packet = NULL;
     mctp_packet_t* tx_queue_tail = NULL;
-
-    size_t max_payload_size = MCTP_PAYLOAD_SIZE(
-        bus->binding->max_transaction_size
-    );
     size_t payload_offset = 0;
-    
 
     mctp_header_t mctp_header = {
         .destination = destination,
@@ -212,7 +207,7 @@ static void mctp_message_disassemble(
     while (payload_offset < message_len)
     {
         size_t bytes_left = message_len - payload_offset;
-        size_t payload_size = MIN(bytes_left, max_payload_size);
+        size_t payload_size = MIN(bytes_left, MCTP_MAX_PAYLOAD_SIZE);
 
         packet = malloc(sizeof(mctp_packet_t));
         memset(packet, 0, sizeof(mctp_packet_t));

@@ -5,9 +5,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#define MCTP_EID_NULL	   0x00
-#define MCTP_EID_BROADCAST 0xFF
-#define MCTP_VERSION       0x01
+#define MCTP_EID_NULL	            0x00
+#define MCTP_EID_BROADCAST          0xFF
+#define MCTP_VERSION                0x01
+#define MCTP_MAX_PAYLOAD_SIZE       0x40
 
 
 typedef uint8_t mctp_eid_t;
@@ -112,7 +113,6 @@ typedef struct mctp_binding_t
     mctp_binding_type_t binding_type;
     uint8_t version;
     mctp_inst_t* mctp_inst;
-    size_t max_transaction_size;
     size_t binding_header_size;
     size_t binding_trailer_size;
     void* transport_binding;

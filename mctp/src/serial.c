@@ -68,9 +68,7 @@ mctp_serial_binding_t* mctp_serial_init()
         serial_binding->binding.binding_type = MCTP_BINDING_TYPE_SERIAL;
         serial_binding->binding.version = MCTP_VERSION;
         serial_binding->binding.packet_tx = mctp_serial_packet_tx;
-        
-        serial_binding->binding.max_transaction_size = MCTP_SERIAL_MAX_TRANSACTION_SIZE;
-	    serial_binding->binding.binding_header_size = MCTP_SERIAL_HEADER_SIZE;
+        serial_binding->binding.binding_header_size = MCTP_SERIAL_HEADER_SIZE;
 	    serial_binding->binding.binding_trailer_size = MCTP_SERIAL_TRAILER_SIZE;
     }
 
