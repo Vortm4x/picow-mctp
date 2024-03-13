@@ -139,26 +139,43 @@ static int mctp_message_tx_on_bus(
 }
 
 */
-static mctp_header_t* mctp_packet_header(
-    mctp_packet_t* packet,
-    mctp_binding_t* binding
+static mctp_header_t* mctp_packet_buffer_header(
+    mctp_packet_buffer_t* packet_buffer
 )
 {
-    return (mctp_header_t*)(&packet->buffer[binding->binding_header_size]);
+    return (mctp_header_t*)(&packet_buffer->buffer[packet_buffer->mctp_header_offset]);
 }
 
-static uint8_t* mctp_packet_data(
-    mctp_packet_t* packet,
-    mctp_binding_t* binding
+static uint8_t* mctp_packet_buffer_data(
+    mctp_packet_buffer_t* packet_buffer
 )
 {
-    return (uint8_t*)(&packet->buffer[binding->binding_header_size + sizeof(mctp_header_t)]);
+    return (uint8_t*)(mctp_packet_buffer_header(packet_buffer) + 1);
 }
 
+mctp_packet_buffer_t* mctp_packet_buffer_init(
+    size_t alloc_size,
+    size_t mctp_header_offset
+)
+{
+    mctp_packet_buffer_t* packet_buffer = malloc(sizeof(mctp_packet_buffer_t));
+    memset(packet_buffer, 0, sizeof(mctp_packet_buffer_t));
+
+    packet_buffer->buffer = calloc(alloc_size, sizeof(uint8_t));
+    packet_buffer->mctp_header_offset = mctp_header_offset;
+}
+
+void mctp_packet_buffer_destroy(
+    mctp_packet_buffer_t* packet_buffer
+)
+{
+    free(packet_buffer->buffer);
+    free(packet_buffer);
+}
 
 static void mctp_packet_tx(
     mctp_bus_t* bus, 
-    mctp_packet_t* packet
+    mctp_packet_buffer_t* packet
 )
 {
     bus->binding->packet_tx(
@@ -171,7 +188,7 @@ static void mctp_packet_queue_tx(
     mctp_bus_t* bus
 )
 {
-    mctp_packet_t* packet = NULL;
+    mctp_packet_buffer_t* packet = NULL;
 
 	while ((packet = bus->tx_queue_head) != NULL) 
     {
@@ -192,8 +209,8 @@ static void mctp_message_disassemble(
     size_t message_len
 )
 {
-    mctp_packet_t* packet = NULL;
-    mctp_packet_t* tx_queue_tail = NULL;
+    mctp_packet_buffer_t* packet = NULL;
+    mctp_packet_buffer_t* tx_queue_tail = NULL;
     size_t payload_offset = 0;
 
     mctp_header_t mctp_header = {
@@ -208,19 +225,16 @@ static void mctp_message_disassemble(
     {
         size_t bytes_left = message_len - payload_offset;
         size_t payload_size = MIN(bytes_left, MCTP_MAX_PAYLOAD_SIZE);
-
-        packet = malloc(sizeof(mctp_packet_t));
-        memset(packet, 0, sizeof(mctp_packet_t));
-        
-        packet->buffer_len = MCTP_PACKET_SIZE(
+        size_t packet_size = MCTP_PACKET_SIZE(
             MCTP_TRANSACTION_SIZE(payload_size),
             bus->binding->binding_header_size,
             bus->binding->binding_trailer_size
         );
-        packet->buffer = calloc(packet->buffer_len, sizeof(uint8_t));
 
-        mctp_header_t* packet_header = mctp_packet_header(packet, bus->binding);
-        uint8_t* packet_data = mctp_packet_data(packet, bus->binding);
+        packet = mctp_packet_buffer_init(packet_size, bus->binding->binding_header_size);
+        
+        mctp_header_t* packet_header = mctp_packet_buffer_header(packet);
+        uint8_t* packet_data = mctp_packet_buffer_data(packet);
 
         memcpy(packet_header, &mctp_header, sizeof(mctp_header_t));
         memcpy(packet_data, &message[payload_offset], sizeof(mctp_header_t));
@@ -240,8 +254,8 @@ static void mctp_message_disassemble(
         payload_offset += payload_size;
     }
 
-    mctp_packet_header(bus->tx_queue_head, bus->binding)->start_of_message = true;
-    mctp_packet_header(tx_queue_tail, bus->binding)->end_of_message = true;
+    mctp_packet_buffer_header(bus->tx_queue_head)->start_of_message = true;
+    mctp_packet_buffer_header(tx_queue_tail)->end_of_message = true;
 }
 
 void mctp_message_tx(
@@ -263,4 +277,46 @@ void mctp_message_tx(
     );
 
     mctp_packet_queue_tx(mctp_inst->bus);
+}
+
+void mctp_transaction_rx(
+    mctp_bus_t* bus,
+    mctp_packet_buffer_t* transaction
+)
+{
+    mctp_header_t* mctp_header = mctp_packet_buffer_header(transaction);
+    uint8_t* payload = mctp_packet_buffer_data(transaction);
+
+    if(mctp_header->destination != bus->eid)
+    {
+        mctp_packet_buffer_destroy(transaction);
+        return;
+    }
+
+    if(mctp_header->start_of_message 
+    && mctp_header->end_of_message)
+    {
+        if(mctp_header->packet_sequence == 0)
+        {
+            // mctp_transaction_rx payload
+        }
+        else
+        {
+            mctp_packet_buffer_destroy(transaction);
+        }
+    }
+    else
+    if(mctp_header->start_of_message)
+    {
+        
+    }
+    else
+    if(mctp_header->end_of_message)
+    {
+
+    }
+    else
+    {
+        
+    }
 }

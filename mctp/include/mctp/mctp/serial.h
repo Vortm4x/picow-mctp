@@ -30,11 +30,26 @@ mctp_serial_trailer_t;
 #define MCTP_SERIAL_TRAILER_SIZE (sizeof(mctp_serial_trailer_t))
 
 
+typedef enum mctp_serial_rx_state_t
+{
+    MCTP_SERIAL_RX_STATE_WAIT_SYNC_START,
+	MCTP_SERIAL_RX_STATE_WAIT_REVISION,
+    MCTP_SERIAL_RX_STATE_WAIT_LEN,
+	MCTP_SERIAL_RX_STATE_DATA,
+	MCTP_SERIAL_RX_STATE_WAIT_FCS_HIGH,
+	MCTP_SERIAL_RX_STATE_WAIT_FCS_LOW,
+	MCTP_SERIAL_RX_STATE_WAIT_SYNC_END,
+}
+mctp_serial_rx_state_t;
+
 typedef void (*serial_raw_tx_callback_t)(uint8_t* buffer, size_t buffer_len, void* args);
 
 typedef struct mctp_serial_binding_t
 {
     mctp_binding_t binding;
+    mctp_serial_rx_state_t rx_state;
+    mctp_packet_buffer_t* rx_transaction;
+    uint16_t rx_fcs;
     serial_raw_tx_callback_t raw_tx_callback;
     void* raw_tx_args;
 }
@@ -73,4 +88,10 @@ void mctp_serial_set_raw_tx_callback(
     void* raw_tx_args
 );
 
-#endif //SERIAL_H
+void mctp_serial_byte_rx(
+    mctp_serial_binding_t* serial_binding,
+    uint8_t byte
+);
+
+
+#endif // SERIAL_H

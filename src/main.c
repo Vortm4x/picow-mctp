@@ -49,39 +49,6 @@ void uart_isr()
 }
 */
 
-bool init_all()
-{
-    if(!stdio_init_all())
-    {
-        printf("stdio init failed\n");
-        return false;
-    }
-    
-    if (cyw43_arch_init() != PICO_OK) 
-    {
-        printf("CYW43 arch init failed\n");
-        return false;
-    }
-
-    uart_inst_t* uart_id = uart_get_instance(UART_INDEX);
-
-
-    uart_init(uart_id, UART_BAUD_RATE);
-
-    gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
-    gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
-
-    uart_set_hw_flow(uart_id, false, false);
-    uart_set_format(uart_id, UART_DATA_BITS, UART_STOP_BITS, UART_PARITY);
-    uart_set_fifo_enabled(uart_id, false);
-
-    // irq_set_exclusive_handler(UART_IRQ, uart_isr);
-    // irq_set_enabled(UART_IRQ, true);    
-    // uart_set_irq_enables(uart_id, true, false);
-
-    return true;
-}
-
 /*
 void mctp_control_response(serial_pkt_t* uart_pkt)
 {
@@ -187,6 +154,40 @@ void mctp_trace_raw_packet(serial_pkt_t* uart_pkt)
     printf("\n");
 }
 */
+
+bool init_all()
+{
+    if(!stdio_init_all())
+    {
+        printf("stdio init failed\n");
+        return false;
+    }
+    
+    if (cyw43_arch_init() != PICO_OK) 
+    {
+        printf("CYW43 arch init failed\n");
+        return false;
+    }
+
+    uart_inst_t* uart_id = uart_get_instance(UART_INDEX);
+
+
+    uart_init(uart_id, UART_BAUD_RATE);
+
+    gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
+    gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
+
+    uart_set_hw_flow(uart_id, false, false);
+    uart_set_format(uart_id, UART_DATA_BITS, UART_STOP_BITS, UART_PARITY);
+    uart_set_fifo_enabled(uart_id, false);
+
+    // irq_set_exclusive_handler(UART_IRQ, uart_isr);
+    // irq_set_enabled(UART_IRQ, true);    
+    // uart_set_irq_enables(uart_id, true, false);
+
+    return true;
+}
+
 
 void mctp_uart_raw_tx_callback(uint8_t* buffer, size_t buffer_len, void* args)
 {

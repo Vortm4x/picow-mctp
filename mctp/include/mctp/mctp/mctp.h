@@ -59,24 +59,14 @@ typedef struct mctp_generic_header_t
 mctp_generic_header_t;
 
 
-typedef struct mctp_packet_t 
+typedef struct mctp_packet_buffer_t 
 {
-    struct mctp_packet_t* next;
-    size_t buffer_len; 
+    struct mctp_packet_buffer_t* next;
+    size_t buffer_len;
+    size_t mctp_header_offset;
     uint8_t* buffer;
 }
-mctp_packet_t;
-
-typedef struct mctp_pkt_buffer_t {
-	size_t start;
-    size_t end; 
-    size_t size;
-	size_t mctp_header_offset;
-	struct mctp_pkt_buffer_t *next;
-	
-}
-mctp_pkt_buffer_t;
-
+mctp_packet_buffer_t;
 
 
 typedef enum mctp_binding_type_t
@@ -97,7 +87,8 @@ typedef struct mctp_binding_t mctp_binding_t;
 typedef struct mctp_bus_t {
 	mctp_eid_t eid;
 	mctp_binding_t* binding;
-	mctp_packet_t* tx_queue_head;
+	mctp_packet_buffer_t* tx_queue_head;
+    mctp_packet_buffer_t* rx_queue_head;
 }
 mctp_bus_t;
 
@@ -116,7 +107,7 @@ typedef struct mctp_binding_t
     size_t binding_header_size;
     size_t binding_trailer_size;
     void* transport_binding;
-    void (*packet_tx)(struct mctp_binding_t* binding, mctp_packet_t* packet);
+    void (*packet_tx)(struct mctp_binding_t* binding, mctp_packet_buffer_t* packet);
 }
 mctp_binding_t;
 
@@ -155,5 +146,19 @@ void mctp_message_tx(
     size_t message_len
 );
 
+void mctp_transaction_rx(
+    mctp_bus_t* bus,
+    mctp_packet_buffer_t* transaction
+);
+
+
+mctp_packet_buffer_t* mctp_packet_buffer_init(
+    size_t alloc_size,
+    size_t mctp_header_offset
+);
+
+void mctp_packet_buffer_destroy(
+    mctp_packet_buffer_t* packet_buffer
+);
 
 #endif //MCTP_H
