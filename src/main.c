@@ -196,6 +196,27 @@ void mctp_uart_raw_tx_callback(uint8_t* buffer, size_t buffer_len, void* args)
     uart_write_blocking(uart_id, buffer, buffer_len);
 }
 
+void mctp_message_rx_callback(
+    mctp_eid_t receiver,
+    mctp_eid_t sender,
+    uint8_t* message,
+    size_t message_len,
+    void* args
+)
+{
+    printf("sender: 0x%02X\n", sender);
+    printf("receiver: 0x%02X\n", receiver);
+    // printf("tag owner: %s\n", tag_owner ? "YES" : "NO");
+    // printf("message tag: %d\n", message_tag);
+    printf("message[%d]:", message_len);
+
+    for(size_t i = 0; i < message_len; ++i)
+    {
+        printf(" %02X", message[i]);
+    }
+
+    printf("\n");
+}
 
 int main() 
 {   
@@ -205,14 +226,16 @@ int main()
     }
 
     mctp_eid_t responder_eid = 0x08;
-    mctp_eid_t requester_eid = 0xCE;
+    mctp_eid_t requester_eid = 0xC8;
     uint8_t message_tag = 0;
 
     mctp_inst_t* mctp_inst = mctp_init();
     mctp_serial_binding_t* serial_binding = mctp_serial_init();
 
+    uart_inst_t* uart_id = uart_get_instance(UART_INDEX);
+    mctp_register_bus(mctp_inst, mctp_serial_get_core_binding(serial_binding), requester_eid);
+
     mctp_serial_set_raw_tx_callback(serial_binding, mctp_uart_raw_tx_callback, NULL);
-    mctp_register_bus(mctp_inst, mctp_serial_get_core_binding(serial_binding), serial_binding, requester_eid);
 
     size_t req_len = sizeof(mctp_generic_header_t) + sizeof(mctp_ctrl_header_t) + 0xFF;
     uint8_t get_eid_req[req_len];
@@ -227,18 +250,25 @@ int main()
     ctrl_header->request = true;
     ctrl_header->instance = 0;
 
+    mctp_set_message_rx_callback(mctp_inst, mctp_message_rx_callback, NULL);
+
     while (true)
     {
-        mctp_message_tx(
-            mctp_inst,
-            responder_eid,
-            true,
-            message_tag,
-            get_eid_req,
-            req_len
-        );
 
-        sleep_ms(2);
+        if(uart_is_readable(uart_id))
+        {
+            mctp_serial_byte_rx(serial_binding, uart_getc(uart_id));
+        }
+        // mctp_message_tx(
+        //     mctp_inst,
+        //     responder_eid,
+        //     true,
+        //     message_tag,
+        //     get_eid_req,
+        //     req_len
+        // );
+
+        // sleep_ms(2);
     }
 
     mctp_serial_destroy(serial_binding);

@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <stdio.h>
+
+
 #define MCTP_DEFAULT_MAX_MSG_SIZE 65536
 
 
@@ -32,19 +35,21 @@ void mctp_set_max_msg_size(mctp_inst_t* mctp_inst, size_t max_msg_size)
 void mctp_register_bus(
     mctp_inst_t* mctp_inst, 
     mctp_binding_t *binding,
-    void* transport_binding,
 	mctp_eid_t eid
 )
 {
-    mctp_inst->bus = malloc(sizeof(mctp_bus_t));
+    mctp_bus_t* bus = malloc(sizeof(mctp_bus_t));
 
-    if(mctp_inst->bus != NULL)
+    if(bus != NULL)
     {
-        memset(mctp_inst->bus, 0, sizeof(mctp_bus_t));
-        mctp_inst->bus->binding = binding;
-        mctp_inst->bus->binding->transport_binding = transport_binding;
-        mctp_inst->bus->eid = eid;
-        binding->mctp_inst = mctp_inst;
+        memset(bus, 0, sizeof(mctp_bus_t));
+
+        bus->eid = eid;
+        bus->binding = binding;
+        bus->mctp_inst = mctp_inst;
+
+        mctp_inst->bus = bus;
+        binding->bus = bus;
     }
 }
 
@@ -55,98 +60,17 @@ void mctp_unregister_bus(
 {
 	free(mctp_inst->bus);
     mctp_inst->bus = NULL;
-    binding->mctp_inst = NULL;
+    binding->bus = NULL;
 }
 
-
-
-/*
-static int mctp_message_tx_on_bus(
-    mctp_bus_t* bus,
-    mctp_eid_t source,
-    mctp_eid_t destination,
-    bool tag_owner,
-    uint8_t msg_tag,
-    void *msg, 
-    size_t msg_len
-)
-{
-	size_t max_payload_len, payload_len, p;
-	struct mctp_pktbuf *pkt;
-	struct mctp_hdr *hdr;
-	int i;
-
-    //check if bus created
-    //check msg tag
-
-	max_payload_len = MCTP_BODY_SIZE(bus->binding->pkt_size);
-
-	// {
-	// 	const bool valid_mtu = max_payload_len >= MCTP_BTU;
-	// 	assert(valid_mtu);
-	// 	if (!valid_mtu)
-	// 		return -EINVAL;
-	// }
-
-	// mctp_prdebug(
-	// 	"%s: Generating packets for transmission of %zu byte message from %hhu to %hhu",
-	// 	__func__, msg_len, src, dest);
-
-	// queue up packets, each of max MCTP_MTU size 
-	
-
-    for (p = 0, i = 0; p < msg_len; i++) {
-		payload_len = msg_len - p;
-		if (payload_len > max_payload_len)
-			payload_len = max_payload_len;
-
-		pkt = mctp_pktbuf_alloc(bus->binding,
-					payload_len + sizeof(*hdr));
-		hdr = mctp_pktbuf_hdr(pkt);
-
-		hdr->ver = bus->binding->version & 0xf;
-		hdr->dest = dest;
-		hdr->src = src;
-		hdr->flags_seq_tag = (tag_owner << MCTP_HDR_TO_SHIFT) |
-				     (msg_tag << MCTP_HDR_TAG_SHIFT);
-
-		if (i == 0)
-			hdr->flags_seq_tag |= MCTP_HDR_FLAG_SOM;
-		if (p + payload_len >= msg_len)
-			hdr->flags_seq_tag |= MCTP_HDR_FLAG_EOM;
-		hdr->flags_seq_tag |= (i & MCTP_HDR_SEQ_MASK)
-				      << MCTP_HDR_SEQ_SHIFT;
-
-		memcpy(mctp_pktbuf_data(pkt), (uint8_t *)msg + p, payload_len);
-
-		// add to tx queue 
-		if (bus->tx_queue_tail)
-			bus->tx_queue_tail->next = pkt;
-		else
-			bus->tx_queue_head = pkt;
-		bus->tx_queue_tail = pkt;
-
-		p += payload_len;
-
-        
-	}
-
-	mctp_prdebug("%s: Enqueued %d packets", __func__, i);
-
-	mctp_send_tx_queue(bus);
-
-	return 0;
-}
-
-*/
-static mctp_header_t* mctp_packet_buffer_header(
+mctp_header_t* mctp_packet_buffer_header(
     mctp_packet_buffer_t* packet_buffer
 )
 {
     return (mctp_header_t*)(&packet_buffer->buffer[packet_buffer->mctp_header_offset]);
 }
 
-static uint8_t* mctp_packet_buffer_data(
+uint8_t* mctp_packet_buffer_data(
     mctp_packet_buffer_t* packet_buffer
 )
 {
@@ -163,6 +87,8 @@ mctp_packet_buffer_t* mctp_packet_buffer_init(
 
     packet_buffer->buffer = calloc(alloc_size, sizeof(uint8_t));
     packet_buffer->mctp_header_offset = mctp_header_offset;
+
+    return packet_buffer;
 }
 
 void mctp_packet_buffer_destroy(
@@ -260,7 +186,7 @@ static void mctp_message_disassemble(
 
 void mctp_message_tx(
     mctp_inst_t* mctp_inst, 
-    mctp_eid_t destination, 
+    mctp_eid_t destination,
     bool tag_owner,
 	uint8_t message_tag, 
     uint8_t* message, 
@@ -279,6 +205,44 @@ void mctp_message_tx(
     mctp_packet_queue_tx(mctp_inst->bus);
 }
 
+
+static uint8_t* mctp_message_assemble(
+    mctp_message_ctx_t* message_ctx
+)
+{
+    uint8_t* message = calloc(message_ctx->message_len, sizeof(uint8_t));
+    mctp_packet_buffer_t* transaction = message_ctx->rx_queue_head;
+    size_t payload_offset = 0;
+
+    while (transaction != NULL)
+    {
+        size_t payload_size = MCTP_PAYLOAD_SIZE(transaction->buffer_len);
+        memcpy(&message[payload_offset], mctp_packet_buffer_data(transaction), payload_size);
+        
+        payload_offset += payload_size;
+        transaction = transaction->next;
+    }
+
+    return message;
+}
+
+void mctp_messsage_rx(
+    mctp_inst_t* mctp_inst,
+    mctp_eid_t receiver,
+    mctp_eid_t sender,
+    uint8_t* message,
+    size_t message_len
+)
+{
+    mctp_inst->message_rx_callback(
+        receiver,
+        sender,
+        message,
+        message_len,
+        mctp_inst->message_rx_args
+    );
+}
+
 void mctp_transaction_rx(
     mctp_bus_t* bus,
     mctp_packet_buffer_t* transaction
@@ -293,30 +257,154 @@ void mctp_transaction_rx(
         return;
     }
 
+    mctp_message_ctx_t* message_ctx = bus->incoming_messages[mctp_header->message_tag];
+
     if(mctp_header->start_of_message 
     && mctp_header->end_of_message)
     {
         if(mctp_header->packet_sequence == 0)
         {
-            // mctp_transaction_rx payload
+            mctp_messsage_rx(
+                bus->mctp_inst,
+                bus->eid,
+                mctp_header->source,
+                mctp_packet_buffer_data(transaction),
+                MCTP_PAYLOAD_SIZE(transaction->buffer_len)
+            );
         }
         else
         {
-            mctp_packet_buffer_destroy(transaction);
+            printf("packet drop\n");
         }
+
+        mctp_packet_buffer_destroy(transaction);
     }
     else
     if(mctp_header->start_of_message)
     {
-        
+        if(message_ctx != NULL)
+        {
+            mctp_message_ctx_destroy(message_ctx);
+        }
+
+        message_ctx = mctp_message_ctx_init(mctp_header->source);
+        mctp_message_ctx_add_transaction(message_ctx, transaction);
     }
     else
     if(mctp_header->end_of_message)
     {
+        if(message_ctx == NULL)
+        {
+            mctp_packet_buffer_destroy(transaction);
+            return;
+        }
 
+        if(message_ctx->packet_count % 4 == mctp_header->packet_sequence
+        && transaction->buffer_len <= message_ctx->rx_queue_head->buffer_len)
+        {
+            mctp_message_ctx_add_transaction(message_ctx, transaction);
+
+            uint8_t* message = mctp_message_assemble(message_ctx);
+            mctp_message_ctx_destroy(message_ctx);
+
+            mctp_messsage_rx(
+                bus->mctp_inst,
+                bus->eid,
+                mctp_header->source,
+                message,
+                message_ctx->message_len
+            );
+
+            free(message);
+        }
+        else
+        {
+            mctp_message_ctx_add_transaction(message_ctx, transaction);
+            mctp_message_ctx_destroy(message_ctx);
+        }
+
+        message_ctx = NULL;
     }
     else
     {
-        
+        if(message_ctx == NULL)
+        {
+            mctp_packet_buffer_destroy(transaction);
+            return;
+        }
+
+        if(message_ctx->packet_count % 4 == mctp_header->packet_sequence
+        && transaction->buffer_len == message_ctx->rx_queue_head->buffer_len)
+        {
+            mctp_message_ctx_add_transaction(message_ctx, transaction);
+        }
+        else
+        {
+            mctp_message_ctx_add_transaction(message_ctx, transaction);
+            mctp_message_ctx_destroy(message_ctx);
+            message_ctx = NULL;
+        }
     }
+
+    bus->incoming_messages[mctp_header->message_tag] = message_ctx;
+}
+
+mctp_message_ctx_t* mctp_message_ctx_init(
+    mctp_eid_t sender
+)
+{
+    mctp_message_ctx_t* message_ctx = malloc(sizeof(mctp_message_ctx_t));
+
+    if(message_ctx != NULL)
+    {
+        memset(message_ctx, 0, sizeof(mctp_message_ctx_t));
+
+        message_ctx->sender = sender;
+    }
+
+    return message_ctx;
+}
+
+void mctp_message_ctx_destroy(
+    mctp_message_ctx_t* message_ctx
+)
+{
+    mctp_packet_buffer_t* transaction = NULL;
+
+    while((transaction = message_ctx->rx_queue_head) != NULL)
+    {
+        message_ctx->rx_queue_head = transaction->next;
+        mctp_packet_buffer_destroy(transaction);
+    }
+
+    free(message_ctx);
+}
+
+void mctp_message_ctx_add_transaction(
+    mctp_message_ctx_t* message_ctx,
+    mctp_packet_buffer_t* transaction
+)
+{
+    if(message_ctx->rx_queue_head != NULL)
+    {
+        message_ctx->rx_queue_tail->next = transaction;
+    }
+    else
+    {
+        message_ctx->rx_queue_head = transaction;
+    }
+
+    message_ctx->rx_queue_tail = transaction;
+    message_ctx->packet_count++;
+    message_ctx->message_len += MCTP_PAYLOAD_SIZE(transaction->buffer_len);
+}
+
+void mctp_set_message_rx_callback(
+    mctp_inst_t* mctp_inst,
+    mctp_message_rx_t message_rx_callback,
+    void* message_rx_args
+)
+{
+    mctp_inst->message_rx_callback = message_rx_callback;
+    mctp_inst->message_rx_args = message_rx_args;
 }

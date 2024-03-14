@@ -65,11 +65,14 @@ mctp_serial_binding_t* mctp_serial_init()
     {
         memset(serial_binding, 0, sizeof(mctp_serial_binding_t));
 
-        serial_binding->binding.binding_type = MCTP_BINDING_TYPE_SERIAL;
-        serial_binding->binding.version = MCTP_VERSION;
-        serial_binding->binding.packet_tx = mctp_serial_packet_tx;
-        serial_binding->binding.binding_header_size = MCTP_SERIAL_HEADER_SIZE;
-	    serial_binding->binding.binding_trailer_size = MCTP_SERIAL_TRAILER_SIZE;
+        mctp_binding_t* binding = mctp_serial_get_core_binding(serial_binding); 
+
+        binding->binding_type = MCTP_BINDING_TYPE_SERIAL;
+        binding->version = MCTP_VERSION;        
+        binding->binding_header_size = MCTP_SERIAL_HEADER_SIZE;
+	    binding->binding_trailer_size = MCTP_SERIAL_TRAILER_SIZE;
+        binding->packet_tx = mctp_serial_packet_tx;
+        binding->transport_binding = serial_binding;
     }
 
     return serial_binding;
@@ -85,7 +88,7 @@ void mctp_serial_destroy(
 
 void mctp_serial_set_raw_tx_callback(
     mctp_serial_binding_t* serial_binding,
-    serial_raw_tx_callback_t raw_tx_callback,
+    mctp_serial_raw_tx_t raw_tx_callback,
     void* raw_tx_args
 )
 {
@@ -98,8 +101,6 @@ void mctp_serial_byte_rx(
     uint8_t byte
 )
 {
-    mctp_packet_buffer_t packet;
-
     switch(serial_binding->rx_state)
     {
         case MCTP_SERIAL_RX_STATE_WAIT_SYNC_START:
@@ -132,11 +133,12 @@ void mctp_serial_byte_rx(
 
         case MCTP_SERIAL_RX_STATE_WAIT_LEN:
         {
-            if(sizeof(mctp_header_t) < byte && byte <= MCTP_MAX_PAYLOAD_SIZE)
+            if(sizeof(mctp_header_t) < byte && byte <= MCTP_TRANSACTION_SIZE(MCTP_MAX_PAYLOAD_SIZE))
             {
                 mctp_packet_buffer_t* rx_transaction = mctp_packet_buffer_init(byte, 0);
                 
                 serial_binding->rx_transaction = rx_transaction;
+                serial_binding->rx_transaction_size = byte;
                 serial_binding->rx_state = MCTP_SERIAL_RX_STATE_DATA;
             }
             else
@@ -149,10 +151,11 @@ void mctp_serial_byte_rx(
         case MCTP_SERIAL_RX_STATE_DATA:
         {
             mctp_packet_buffer_t* rx_transaction = serial_binding->rx_transaction;
+
             rx_transaction->buffer[rx_transaction->buffer_len] = byte;
             rx_transaction->buffer_len++;
 
-            if(rx_transaction->buffer_len == MCTP_TRANSACTION_SIZE(MCTP_MAX_PAYLOAD_SIZE))
+            if(rx_transaction->buffer_len == serial_binding->rx_transaction_size)
             {
                 serial_binding->rx_state = MCTP_SERIAL_RX_STATE_WAIT_FCS_HIGH;
             }
@@ -178,7 +181,7 @@ void mctp_serial_byte_rx(
             if(byte == MCTP_SERIAL_FRAME_FLAG)
             {
                 mctp_transaction_rx(
-                    serial_binding->binding.mctp_inst->bus,
+                    serial_binding->binding.bus,
                     serial_binding->rx_transaction
                 );
             }
@@ -188,6 +191,7 @@ void mctp_serial_byte_rx(
             }
 
             serial_binding->rx_transaction = NULL;
+            serial_binding->rx_transaction_size = 0;
             serial_binding->rx_fcs = 0;
             serial_binding->rx_state = MCTP_SERIAL_RX_STATE_WAIT_SYNC_START;
         }

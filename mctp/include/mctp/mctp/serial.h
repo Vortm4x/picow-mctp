@@ -42,15 +42,16 @@ typedef enum mctp_serial_rx_state_t
 }
 mctp_serial_rx_state_t;
 
-typedef void (*serial_raw_tx_callback_t)(uint8_t* buffer, size_t buffer_len, void* args);
+typedef void (*mctp_serial_raw_tx_t)(uint8_t* buffer, size_t buffer_len, void* args);
 
 typedef struct mctp_serial_binding_t
 {
     mctp_binding_t binding;
     mctp_serial_rx_state_t rx_state;
     mctp_packet_buffer_t* rx_transaction;
+    size_t rx_transaction_size;
     uint16_t rx_fcs;
-    serial_raw_tx_callback_t raw_tx_callback;
+    mctp_serial_raw_tx_t raw_tx_callback;
     void* raw_tx_args;
 }
 mctp_serial_binding_t;
@@ -84,7 +85,7 @@ mctp_binding_t* mctp_serial_get_core_binding(
 
 void mctp_serial_set_raw_tx_callback(
     mctp_serial_binding_t* serial_binding,
-    serial_raw_tx_callback_t raw_tx_callback,
+    mctp_serial_raw_tx_t raw_tx_callback,
     void* raw_tx_args
 );
 
@@ -92,6 +93,7 @@ void mctp_serial_byte_rx(
     mctp_serial_binding_t* serial_binding,
     uint8_t byte
 );
+
 
 
 #endif // SERIAL_H

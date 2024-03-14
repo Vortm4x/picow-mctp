@@ -9,7 +9,7 @@
 #define MCTP_EID_BROADCAST          0xFF
 #define MCTP_VERSION                0x01
 #define MCTP_MAX_PAYLOAD_SIZE       0x40
-
+#define MCTP_MESSAGE_TAG_COUNT      (1 << 3)
 
 typedef uint8_t mctp_eid_t;
 
@@ -24,6 +24,7 @@ typedef enum mctp_msg_type_t
     MCTP_MSG_TYPE_VENDOR_IANA   = 0x7F,
 }
 mctp_msg_type_t;
+
 
 typedef struct mctp_header_t
 {
@@ -80,15 +81,51 @@ typedef enum mctp_binding_type_t
 }
 mctp_binding_type_t;
 
-struct mctp_binding_t;
-typedef struct mctp_binding_t mctp_binding_t;
+struct mctp_bus_t;
+typedef struct mctp_bus_t mctp_bus_t;
+struct mctp_inst_t;
+typedef struct mctp_inst_t mctp_inst_t;
 
+
+typedef struct mctp_binding_t
+{
+    mctp_binding_type_t binding_type;
+    uint8_t version;
+    mctp_bus_t* bus;
+    size_t binding_header_size;
+    size_t binding_trailer_size;
+    void* transport_binding;
+    void (*packet_tx)(struct mctp_binding_t* binding, mctp_packet_buffer_t* packet);
+}
+mctp_binding_t;
+
+
+typedef struct mctp_message_ctx_t
+{
+    mctp_packet_buffer_t* rx_queue_head;
+    mctp_packet_buffer_t* rx_queue_tail;
+    size_t message_len;
+    size_t packet_count;
+    mctp_eid_t sender;
+    bool tag_owner;
+}
+mctp_message_ctx_t;
+
+
+typedef void (*mctp_message_rx_t)(
+    mctp_eid_t receiver,
+    mctp_eid_t sender,
+    uint8_t* message,
+    size_t message_len,
+    void* args
+);
 
 typedef struct mctp_bus_t {
 	mctp_eid_t eid;
 	mctp_binding_t* binding;
+    mctp_inst_t* mctp_inst;
 	mctp_packet_buffer_t* tx_queue_head;
-    mctp_packet_buffer_t* rx_queue_head;
+    mctp_message_ctx_t* incoming_messages[MCTP_MESSAGE_TAG_COUNT];
 }
 mctp_bus_t;
 
@@ -96,20 +133,10 @@ typedef struct mctp_inst_t
 {
     mctp_bus_t* bus;
 	size_t max_msg_size;
+    mctp_message_rx_t message_rx_callback;
+    void* message_rx_args;
 }
 mctp_inst_t;
-
-typedef struct mctp_binding_t
-{
-    mctp_binding_type_t binding_type;
-    uint8_t version;
-    mctp_inst_t* mctp_inst;
-    size_t binding_header_size;
-    size_t binding_trailer_size;
-    void* transport_binding;
-    void (*packet_tx)(struct mctp_binding_t* binding, mctp_packet_buffer_t* packet);
-}
-mctp_binding_t;
 
 
 
@@ -127,7 +154,6 @@ void mctp_set_max_msg_size(
 void mctp_register_bus(
     mctp_inst_t* mctp_inst, 
     mctp_binding_t *binding,
-    void* transport_binding,
 	mctp_eid_t eid
 );
 
@@ -151,13 +177,47 @@ void mctp_transaction_rx(
     mctp_packet_buffer_t* transaction
 );
 
-
 mctp_packet_buffer_t* mctp_packet_buffer_init(
     size_t alloc_size,
     size_t mctp_header_offset
 );
 
 void mctp_packet_buffer_destroy(
+    mctp_packet_buffer_t* packet_buffer
+);
+
+mctp_message_ctx_t* mctp_message_ctx_init(
+    mctp_eid_t sender
+);
+
+void mctp_message_ctx_destroy(
+    mctp_message_ctx_t* message_ctx
+);
+
+void mctp_message_ctx_add_transaction(
+    mctp_message_ctx_t* message_ctx,
+    mctp_packet_buffer_t* transaction
+);
+
+void mctp_set_message_rx_callback(
+    mctp_inst_t* mctp_inst,
+    mctp_message_rx_t message_rx_callback,
+    void* message_rx_args
+);
+
+void mctp_messsage_rx(
+    mctp_inst_t* mctp_inst,
+    mctp_eid_t receiver,
+    mctp_eid_t sender,
+    uint8_t* message,
+    size_t message_len
+);
+
+mctp_header_t* mctp_packet_buffer_header(
+    mctp_packet_buffer_t* packet_buffer
+);
+
+uint8_t* mctp_packet_buffer_data(
     mctp_packet_buffer_t* packet_buffer
 );
 
