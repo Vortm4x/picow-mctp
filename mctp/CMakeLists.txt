@@ -7,6 +7,8 @@ set(PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 add_library (${PROJECT_NAME} STATIC 
     src/mctp.c
     src/serial.c
+    src/packet_buffer.c
+    src/message_ctx.c
 )
 
 target_link_libraries(${PROJECT_NAME} 
