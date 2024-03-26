@@ -18,142 +18,43 @@
 #define UART_STOP_BITS 1
 #define UART_PARITY UART_PARITY_NONE
 
+#define MCTP_BUS_OWNER_EID 0x08
 
-
-// void uart_isr();
 bool init_all();
-// void mctp_trace_packet(serial_pkt_t* uart_pkt);
-// void mctp_trace_raw_packet(serial_pkt_t* uart_pkt);
 
-/*
-void uart_isr()
-{
-    uart_inst_t* uart_id = uart_get_instance(UART_INDEX);
-    uart_hw_t* uart_hw = uart_get_hw(uart_id);
+void mctp_discovery_notify(
+    mctp_inst_t* mctp_inst
+);
 
-    if((uart_hw->ris & UART_UARTRIS_RXRIS_BITS) == 0)
-    {
-        return;
-    }
-    
-    serial_pkt_t* uart_pkt = &uart_packets[UART_INDEX];
+void mctp_uart_raw_tx_callback(
+    uint8_t* buffer, 
+    size_t buffer_len, 
+    void* args
+);
 
-    while(uart_is_readable_within_us(uart_id, UART_READABLE_DELAY_US) && uart_pkt->pkt_buffer_len < MCTP_SERIAL_PKT_MAX)
-    {
-        uart_pkt->pkt_buffer[uart_pkt->pkt_buffer_len++] = uart_getc(uart_id);
-    }
+void mctp_ctrl_message_rx_callback(
+    mctp_eid_t receiver,
+    mctp_eid_t sender,
+    uint8_t message_tag,
+    bool tag_owner,
+    bool integrity_check,
+    mctp_ctrl_header_t* control_header,
+    uint8_t* message_body,
+    size_t body_len,
+    void* args
+);
 
-    uart_hw->icr = UART_UARTICR_RXIC_BITS;
+void mctp_pldm_message_rx_callback(
+    mctp_eid_t receiver,
+    mctp_eid_t sender,
+    uint8_t message_tag,
+    bool tag_owner,
+    bool integrity_check,
+    uint8_t* message,
+    size_t message_len,
+    void* args
+);
 
-    uart_pkt->received = true;
-}
-*/
-
-/*
-void mctp_control_response(serial_pkt_t* uart_pkt)
-{
-
-
-}
-
-void mctp_trace_packet(serial_pkt_t* uart_pkt)
-{
-    mctp_serial_header_t* serial_header = (mctp_serial_header_t*)(uart_pkt->pkt_buffer);
-    {
-        printf("Serial header\n");
-        printf("Framing flag (start): 0x%02X\n", serial_header->framing_flag);
-        printf("Revision: 0x%02X\n", serial_header->revision);
-        printf("Byte count: %d\n", serial_header->byte_count);
-        printf("\n");
-    }
-
-    if(serial_header->framing_flag != MCTP_SERIAL_FF
-    || serial_header->byte_count <= sizeof(mctp_header_t)
-    || serial_header->revision != MCTP_SERIAL_REV)
-    {
-        printf("Packet error\n");
-        return;
-    }
-
-    mctp_header_t* mctp_header = (mctp_header_t*)(serial_header + 1);
-    {
-        printf("MCTP header\n");
-        printf("Version: %d\n", mctp_header->version);
-        printf("Destination: 0x%02X\n", mctp_header->destination);
-        printf("Source: 0x%02X\n", mctp_header->source);
-        printf("SOM: %s\n", mctp_header->start_of_message ? "YES" : "NO");
-        printf("EOM: %s\n", mctp_header->end_of_message ? "YES" : "NO");
-        printf("Sequence: %d\n", mctp_header->packet_sequence);
-        printf("Tag owner: %s\n", mctp_header->tag_owner ? "YES" : "NO");
-        printf("Message tag: %d\n", mctp_header->message_tag);
-        printf("\n");
-    }
-
-    mctp_generic_header_t* message_type = (mctp_generic_header_t*)(mctp_header + 1);
-    {
-        printf("MCTP body\n");
-        printf("Integrity check: %s\n", message_type->integrity_check ? "YES" : "NO");
-        printf("Message type: %d\n", message_type->type);
-    }
-    
-    uint8_t* mctp_message = (uint8_t*)(message_type + 1);
-    uint8_t mctp_message_len = serial_header->byte_count;
-    {
-        mctp_message_len -= ((uint8_t)sizeof(mctp_header_t));
-        mctp_message_len -= ((uint8_t)sizeof(mctp_generic_header_t));
-
-        printf("Message bytes[%zu]:", mctp_message_len);
-
-        for(uint8_t i = 0; i < mctp_message_len; ++i)
-        {
-            printf(" %02X", mctp_message[i]);
-        }
-        printf("\n");
-    }
-    
-    mctp_serial_trail_t* serial_tail = (mctp_serial_trail_t*)(mctp_message + mctp_message_len);
-    {
-        printf("CRC16: 0x%02X%02X\n", serial_tail->crc16_high, serial_tail->crc16_low);
-        printf("Framing flag (end): 0x%02X\n", serial_tail->framing_flag);
-        printf("\n");
-    }
-
-    printf("\n");    
-}
-
-void mctp_trace_raw_packet(serial_pkt_t* uart_pkt)
-{
-    size_t x = 0;
-
-    printf("Serial header raw:");
-    for(size_t i = 0; i < sizeof(mctp_serial_header_t); ++i, ++x)
-    {
-        printf(" %02X", uart_pkt->pkt_buffer[x]);
-    }
-    printf("\n");
-
-    printf("MCTP header raw:");
-    for(size_t i = 0; i < sizeof(mctp_header_t); ++i, ++x)
-    {
-        printf(" %02X", uart_pkt->pkt_buffer[x]);
-    }
-    printf("\n");
-    
-    printf("MCTP body raw:");
-    for(size_t i = sizeof(mctp_header_t); i < uart_pkt->pkt_buffer[2]; ++i, ++x)
-    {
-        printf(" %02X", uart_pkt->pkt_buffer[x]);
-    }
-    printf("\n");
-
-    printf("Serial tail raw:");
-    for(size_t i = 0; i < sizeof(mctp_serial_trail_t); ++i, ++x)
-    {
-        printf(" %02X", uart_pkt->pkt_buffer[x]);
-    }
-    printf("\n");
-}
-*/
 
 bool init_all()
 {
@@ -188,34 +89,130 @@ bool init_all()
     return true;
 }
 
+void mctp_discovery_notify(
+    mctp_inst_t* mctp_inst
+)
+{
+    size_t msg_len = sizeof(mctp_generic_header_t) + sizeof(mctp_ctrl_header_t);
+    uint8_t discovery_notify[msg_len];
+    mctp_generic_header_t* base = (mctp_generic_header_t*)discovery_notify;
+    mctp_ctrl_header_t* ctrl_header = (mctp_ctrl_header_t*)(base + 1);
+    uint8_t message_tag = 0; 
 
-void mctp_uart_raw_tx_callback(uint8_t* buffer, size_t buffer_len, void* args)
+    memset(discovery_notify, 0, msg_len);
+    
+    base->integrity_check = false;
+    base->type = MCTP_MSG_TYPE_CONTROL;
+    ctrl_header->command = MCTP_CTRL_CMD_DISCOVERY_NOTIFY;
+    ctrl_header->request = true;
+    ctrl_header->datagram = true;
+    ctrl_header->instance = 0;
+
+    mctp_message_tx(
+        mctp_inst,
+        MCTP_BUS_OWNER_EID,
+        true,
+        message_tag,
+        discovery_notify,
+        msg_len
+    );
+}
+
+void mctp_uart_raw_tx_callback(
+    uint8_t* buffer, 
+    size_t buffer_len, 
+    void* args
+)
 {
     uart_inst_t* uart_id = uart_get_instance(UART_INDEX);
 
     uart_write_blocking(uart_id, buffer, buffer_len);
 }
 
-void mctp_message_rx_callback(
+
+void mctp_ctrl_message_rx_callback(
     mctp_eid_t receiver,
     mctp_eid_t sender,
+    uint8_t message_tag,
+    bool tag_owner,
+    bool integrity_check,
+    mctp_ctrl_header_t* control_header,
+    uint8_t* message_body,
+    size_t body_len,
+    void* args
+)
+{
+    printf("Transport info\n");
+    printf("Sender: 0x%02X\n", sender);
+    printf("Receiver: 0x%02X\n", receiver);
+    printf("Tag owner: %s\n", tag_owner ? "YES" : "NO");
+    printf("Message tag: %d\n", message_tag);
+    printf("Integrity check: %s\n", integrity_check ? "YES" : "NO");
+    printf("\n");
+
+    printf("Control info\n");
+    printf("Command: 0x%02X\n", control_header->command);
+    printf("Datagram: %s\n", control_header->datagram ? "YES" : "NO");
+    printf("Request: %s\n", control_header->request ? "YES" : "NO");
+    printf("Instance: %d\n", control_header->instance);
+
+    switch (control_header->command)
+    {
+        case MCTP_CTRL_CMD_DISCOVERY_NOTIFY:
+        {
+            if(!control_header->request && body_len == 1)
+            {
+                if(message_body[0] == MCTP_CTRL_CC_SUCCESS)
+                {
+                    printf("Discovery notify accepted\n");
+                }
+                else
+                {
+                    printf("Discovery notify error: 0x%02X\n", message_body[0]);
+                }
+            }
+        }
+        break;
+
+        case MCTP_CTRL_CMD_SET_ENDPOINT_ID:
+        {
+            if(control_header->request && body_len == sizeof(mctp_req_set_eid_t))
+            {
+                mctp_req_set_eid_t* req = (mctp_req_set_eid_t*)message_body;
+                
+                if(req->operation == MCTP_SET_EID_OP_SET_EID
+                && req->eid != MCTP_EID_NULL
+                && req->eid != MCTP_EID_BROADCAST)
+                {
+                    
+                }
+            }
+        }
+        break;
+
+        default: break;
+    }
+}
+
+void mctp_pldm_message_rx_callback(
+    mctp_eid_t receiver,
+    mctp_eid_t sender,
+    uint8_t message_tag,
+    bool tag_owner,
+    bool integrity_check,
     uint8_t* message,
     size_t message_len,
     void* args
 )
 {
-    printf("sender: 0x%02X\n", sender);
-    printf("receiver: 0x%02X\n", receiver);
-    // printf("tag owner: %s\n", tag_owner ? "YES" : "NO");
-    // printf("message tag: %d\n", message_tag);
-    printf("message[%d]:", message_len);
-
-    for(size_t i = 0; i < message_len; ++i)
-    {
-        printf(" %02X", message[i]);
-    }
-
+    printf("Transport info\n");
+    printf("Sender: 0x%02X\n", sender);
+    printf("Receiver: 0x%02X\n", receiver);
+    printf("Tag owner: %s\n", tag_owner ? "YES" : "NO");
+    printf("Message tag: %d\n", message_tag);
+    printf("Integrity check: %s\n", integrity_check ? "YES" : "NO");
     printf("\n");
+       
 }
 
 int main() 
@@ -225,50 +222,24 @@ int main()
         return -1;
     }
 
-    mctp_eid_t responder_eid = 0x08;
-    mctp_eid_t requester_eid = 0xC8;
-    uint8_t message_tag = 0;
+    uart_inst_t* uart_id = uart_get_instance(UART_INDEX);
+
 
     mctp_inst_t* mctp_inst = mctp_init();
     mctp_serial_binding_t* serial_binding = mctp_serial_init();
 
-    uart_inst_t* uart_id = uart_get_instance(UART_INDEX);
-    mctp_register_bus(mctp_inst, mctp_serial_get_core_binding(serial_binding), requester_eid);
-
+    mctp_register_bus(mctp_inst, mctp_serial_get_core_binding(serial_binding), MCTP_EID_NULL);
     mctp_serial_set_raw_tx_callback(serial_binding, mctp_uart_raw_tx_callback, NULL);
+    mctp_set_ctrl_message_rx_callback(mctp_inst, mctp_ctrl_message_rx_callback, NULL);
 
-    size_t req_len = sizeof(mctp_generic_header_t) + sizeof(mctp_ctrl_header_t) + 0xFF;
-    uint8_t get_eid_req[req_len];
-    memset(get_eid_req, 0, req_len);
-    mctp_generic_header_t* base = (mctp_generic_header_t*)get_eid_req;
-    mctp_ctrl_header_t* ctrl_header = (mctp_ctrl_header_t*)(base + 1);
-
-    base->integrity_check = false;
-    base->type = MCTP_MSG_TYPE_CONTROL;
-    ctrl_header->command = MCTP_CTRL_CMD_GET_ENDPOINT_ID;
-    ctrl_header->datagram = false;
-    ctrl_header->request = true;
-    ctrl_header->instance = 0;
-
-    mctp_set_message_rx_callback(mctp_inst, mctp_message_rx_callback, NULL);
+    mctp_discovery_notify(mctp_inst);
 
     while (true)
     {
-
         if(uart_is_readable(uart_id))
         {
             mctp_serial_byte_rx(serial_binding, uart_getc(uart_id));
         }
-        // mctp_message_tx(
-        //     mctp_inst,
-        //     responder_eid,
-        //     true,
-        //     message_tag,
-        //     get_eid_req,
-        //     req_len
-        // );
-
-        // sleep_ms(2);
     }
 
     mctp_serial_destroy(serial_binding);

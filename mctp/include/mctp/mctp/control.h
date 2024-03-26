@@ -1,9 +1,14 @@
 #ifndef CONTROL_H
 #define CONTROL_H
 
+#include <mctp/message.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "mctp.h"
+
+typedef uint8_t mctp_eid_t;
+
+enum mctp_msg_type_t;
+typedef enum mctp_msg_type_t mctp_msg_type_t;
 
 typedef enum mctp_ctrl_cmd_t
 {
@@ -57,6 +62,24 @@ mctp_ctrl_header_t;
 
 // Set endpoint id 
 
+typedef enum mctp_set_eid_op_t
+{
+    MCTP_SET_EID_OP_SET_EID     = 0b00,
+    MCTP_SET_EID_OP_FORCE_EID   = 0b01,
+    MCTP_SET_EID_OP_RESET_EID   = 0b10,
+    MCTP_SET_EID_OP_DISCOVERED  = 0b11,
+}
+mctp_set_eid_op_t;
+
+typedef struct mctp_req_set_eid_t
+{   
+    mctp_set_eid_op_t operation : 2;
+    uint8_t : 6; 
+    mctp_eid_t eid;
+}
+mctp_req_set_eid_t;
+
+
 typedef enum mctp_eid_alloc_t
 {
     MCTP_EID_ALLOC_POOL_NOT_USED = 0b00,
@@ -108,6 +131,7 @@ typedef enum mctp_endpoint_type_t
     MCTP_ENDPOINT_RESERVED_b11  = 0b11,
 }
 mctp_endpoint_type_t;
+
 
 typedef struct mctp_resp_get_eid_t
 {

@@ -10,15 +10,18 @@ typedef struct mctp_message_ctx_t
     mctp_packet_buffer_t* rx_queue_head;
     mctp_packet_buffer_t* rx_queue_tail;
     size_t message_len;
-    size_t packet_count;
     mctp_eid_t sender;
-    bool tag_owner;
+    bool tag_owner : 1;
+    uint8_t sequence : 2;
+    uint8_t version : 4;
 }
 mctp_message_ctx_t;
 
 
 mctp_message_ctx_t* mctp_message_ctx_init(
-    mctp_eid_t sender
+    mctp_eid_t sender,
+    bool tag_owner,
+    uint8_t version
 );
 
 void mctp_message_ctx_destroy(

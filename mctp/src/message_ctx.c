@@ -7,7 +7,9 @@
 
 
 mctp_message_ctx_t* mctp_message_ctx_init(
-    mctp_eid_t sender
+    mctp_eid_t sender,
+    bool tag_owner,
+    uint8_t version
 )
 {
     mctp_message_ctx_t* message_ctx = malloc(sizeof(mctp_message_ctx_t));
@@ -15,8 +17,10 @@ mctp_message_ctx_t* mctp_message_ctx_init(
     if(message_ctx != NULL)
     {
         memset(message_ctx, 0, sizeof(mctp_message_ctx_t));
-
+        
         message_ctx->sender = sender;
+        message_ctx->tag_owner = tag_owner;
+        message_ctx->version = version;
     }
 
     return message_ctx;
@@ -52,6 +56,6 @@ void mctp_message_ctx_add_transaction(
     }
 
     message_ctx->rx_queue_tail = transaction;
-    message_ctx->packet_count++;
+    message_ctx->sequence++;
     message_ctx->message_len += MCTP_PAYLOAD_SIZE(transaction->buffer_len);
 }

@@ -12,8 +12,11 @@ typedef struct mctp_inst_t
 {
     mctp_bus_t* bus;
 	size_t max_msg_size;
-    mctp_message_rx_t message_rx_callback;
-    void* message_rx_args;
+    mctp_ctrl_message_rx_t ctrl_message_rx_callback;
+    void* ctrl_message_rx_args;
+    mctp_pldm_message_rx_t pldm_message_rx_callback;
+    void* pldm_message_rx_args;
+
 }
 mctp_inst_t;
 
@@ -46,6 +49,8 @@ static void mctp_messsage_rx(
     mctp_inst_t* mctp_inst,
     mctp_eid_t receiver,
     mctp_eid_t sender,
+    uint8_t message_tag,
+    bool tag_owner,
     uint8_t* message,
     size_t message_len
 );
@@ -96,19 +101,21 @@ void mctp_unregister_bus(
     mctp_binding_t *binding
 )
 {
-	free(mctp_inst->bus);
+    free(mctp_inst->bus);
     mctp_inst->bus = NULL;
     binding->bus = NULL;
 }
 
-void mctp_set_message_rx_callback(
+
+
+void mctp_set_ctrl_message_rx_callback(
     mctp_inst_t* mctp_inst,
-    mctp_message_rx_t message_rx_callback,
-    void* message_rx_args
+    mctp_ctrl_message_rx_t ctrl_message_rx_callback,
+    void* ctrl_message_rx_args
 )
 {
-    mctp_inst->message_rx_callback = message_rx_callback;
-    mctp_inst->message_rx_args = message_rx_args;
+    mctp_inst->ctrl_message_rx_callback = ctrl_message_rx_callback;
+    mctp_inst->ctrl_message_rx_args = ctrl_message_rx_args;
 }
 
 void mctp_message_tx(
@@ -176,6 +183,7 @@ void mctp_message_disassemble(
 
         memcpy(packet_header, &mctp_header, sizeof(mctp_header_t));
         memcpy(packet_data, &message[payload_offset], sizeof(mctp_header_t));
+        packet->buffer_len = packet_size;
 
         if (tx_queue_tail != NULL)
         {
@@ -207,8 +215,7 @@ void mctp_packet_queue_tx(
 		mctp_packet_tx(bus, packet);
 
         bus->tx_queue_head = packet->next;
-        free(packet->buffer);
-        free(packet);
+        mctp_packet_buffer_destroy(packet);
 	}
 }
 
@@ -234,7 +241,6 @@ void mctp_transaction_rx(
     }
 
     mctp_header_t* mctp_header = mctp_packet_buffer_header(transaction);
-    uint8_t* payload = mctp_packet_buffer_data(transaction);
 
     if(mctp_header->destination != bus->eid)
     {
@@ -244,35 +250,47 @@ void mctp_transaction_rx(
 
     mctp_message_ctx_t* message_ctx = bus->incoming_messages[mctp_header->message_tag];
 
-    if(mctp_header->start_of_message 
-    && mctp_header->end_of_message)
+    if(mctp_header->start_of_message)
     {
-        if(mctp_header->packet_sequence == 0)
+        if(mctp_header->packet_sequence != 0)
+        {
+            mctp_packet_buffer_destroy(transaction);
+            return;
+        }
+
+        if(mctp_header->end_of_message)
         {
             mctp_messsage_rx(
                 bus->mctp_inst,
-                bus->eid,
+                mctp_header->destination,
                 mctp_header->source,
-                mctp_packet_buffer_data(transaction),
+                mctp_header->message_tag,
+                mctp_header->tag_owner,
+                transaction->buffer,
                 MCTP_PAYLOAD_SIZE(transaction->buffer_len)
             );
-        }
 
-        mctp_packet_buffer_destroy(transaction);
-    }
-    else
-    if(mctp_header->start_of_message)
-    {
-        if(message_ctx != NULL)
+            mctp_packet_buffer_destroy(transaction);
+        }   
+        else
         {
-            mctp_message_ctx_destroy(message_ctx);
-        }
+            if(message_ctx != NULL)
+            {
+                mctp_message_ctx_destroy(message_ctx);
+            }
 
-        message_ctx = mctp_message_ctx_init(mctp_header->source);
-        mctp_message_ctx_add_transaction(message_ctx, transaction);
+            message_ctx = mctp_message_ctx_init(
+                mctp_header->source, 
+                mctp_header->tag_owner, 
+                mctp_header->version
+            );
+
+            mctp_message_ctx_add_transaction(message_ctx, transaction);
+
+            bus->incoming_messages[mctp_header->message_tag] = message_ctx;
+        }
     }
     else
-    if(mctp_header->end_of_message)
     {
         if(message_ctx == NULL)
         {
@@ -280,54 +298,52 @@ void mctp_transaction_rx(
             return;
         }
 
-        if(message_ctx->packet_count % 4 == mctp_header->packet_sequence
-        && transaction->buffer_len <= message_ctx->rx_queue_head->buffer_len)
+        if(message_ctx->version != mctp_header->version)
         {
-            mctp_message_ctx_add_transaction(message_ctx, transaction);
+            mctp_packet_buffer_destroy(transaction);
+            return;
+        }
 
-            uint8_t* message = mctp_message_assemble(message_ctx);
+        if(message_ctx->sequence != mctp_header->packet_sequence
+        || message_ctx->tag_owner != mctp_header->tag_owner
+        || message_ctx->rx_queue_head->buffer_len < transaction->buffer_len)
+        {
+            mctp_packet_buffer_destroy(transaction);
             mctp_message_ctx_destroy(message_ctx);
+            bus->incoming_messages[mctp_header->message_tag] = NULL;
+            return;
+        }
+
+        mctp_message_ctx_add_transaction(message_ctx, transaction);
+
+        if(mctp_header->end_of_message)
+        {
+            uint8_t* message = mctp_message_assemble(message_ctx);
 
             mctp_messsage_rx(
                 bus->mctp_inst,
-                bus->eid,
+                mctp_header->destination,
                 mctp_header->source,
+                mctp_header->message_tag,
+                mctp_header->tag_owner,
                 message,
-                message_ctx->message_len
+                MCTP_PAYLOAD_SIZE(message_ctx->message_len)
             );
+
+            mctp_message_ctx_destroy(message_ctx);
+            bus->incoming_messages[mctp_header->message_tag] = NULL;
 
             free(message);
         }
         else
         {
-            mctp_message_ctx_add_transaction(message_ctx, transaction);
-            mctp_message_ctx_destroy(message_ctx);
-        }
-
-        message_ctx = NULL;
-    }
-    else
-    {
-        if(message_ctx == NULL)
-        {
-            mctp_packet_buffer_destroy(transaction);
-            return;
-        }
-
-        if(message_ctx->packet_count % 4 == mctp_header->packet_sequence
-        && transaction->buffer_len == message_ctx->rx_queue_head->buffer_len)
-        {
-            mctp_message_ctx_add_transaction(message_ctx, transaction);
-        }
-        else
-        {
-            mctp_message_ctx_add_transaction(message_ctx, transaction);
-            mctp_message_ctx_destroy(message_ctx);
-            message_ctx = NULL;
+            if(message_ctx->rx_queue_head->buffer_len != transaction->buffer_len)
+            {
+                mctp_message_ctx_destroy(message_ctx);
+                bus->incoming_messages[mctp_header->message_tag] = NULL;
+            }
         }
     }
-
-    bus->incoming_messages[mctp_header->message_tag] = message_ctx;
 }
 
 uint8_t* mctp_message_assemble(
@@ -354,20 +370,69 @@ void mctp_messsage_rx(
     mctp_inst_t* mctp_inst,
     mctp_eid_t receiver,
     mctp_eid_t sender,
+    uint8_t message_tag,
+    bool tag_owner,
     uint8_t* message,
     size_t message_len
 )
 {
-    if(mctp_inst->message_rx_callback == NULL)
-    {
-        return;
-    }
+    mctp_generic_header_t* generic_header = (mctp_generic_header_t*)message;
 
-    mctp_inst->message_rx_callback(
-        receiver,
-        sender,
-        message,
-        message_len,
-        mctp_inst->message_rx_args
-    );
+    switch (generic_header->type)
+    {
+        case MCTP_MSG_TYPE_CONTROL:
+        {
+            if(mctp_inst->ctrl_message_rx_callback == NULL)
+            {
+                break;
+            }
+
+            if(message_len < sizeof(mctp_ctrl_header_t) + sizeof(mctp_generic_header_t))
+            {
+                break;
+            }
+
+            mctp_ctrl_header_t* ctrl_header = (mctp_ctrl_header_t*)(generic_header + 1);
+            uint8_t* message_body = (uint8_t*)(ctrl_header + 1);
+            size_t body_len = message_len - (sizeof(mctp_ctrl_header_t) + sizeof(mctp_generic_header_t));
+
+            if(body_len == 0)
+            {
+                message_body = NULL;
+            }
+
+            mctp_inst->ctrl_message_rx_callback(
+                receiver,
+                sender,
+                message_tag,
+                tag_owner,
+                generic_header->integrity_check,
+                ctrl_header,
+                message_body,
+                body_len,
+                mctp_inst->ctrl_message_rx_args
+            );
+        }
+        break;
+
+        case MCTP_MSG_TYPE_PLDM:
+        {
+            if(mctp_inst->pldm_message_rx_callback == NULL)
+            {
+                break;
+            }
+
+            mctp_inst->pldm_message_rx_callback(
+                receiver,
+                sender,
+                message_tag,
+                tag_owner,
+                generic_header->integrity_check,
+                message,
+                message_len,
+                mctp_inst->pldm_message_rx_args
+            );
+        }
+        break;
+    }
 }

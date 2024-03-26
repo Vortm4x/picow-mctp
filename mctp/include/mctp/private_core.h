@@ -25,7 +25,7 @@ typedef struct mctp_binding_t
     size_t binding_header_size;
     size_t binding_trailer_size;
     void* transport_binding;
-    void (*packet_tx)(struct mctp_binding_t* binding, mctp_packet_buffer_t* packet);
+    void (*packet_tx)(mctp_binding_t* binding, mctp_packet_buffer_t* packet);
 }
 mctp_binding_t;
 
