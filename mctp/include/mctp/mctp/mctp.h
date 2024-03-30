@@ -23,22 +23,19 @@ typedef enum mctp_binding_type_t
 }
 mctp_binding_type_t;
 
-// typedef void (*mctp_message_rx_t)(
-//     mctp_eid_t receiver,
-//     mctp_eid_t sender,
-//     uint8_t message_tag,
-//     bool tag_owner,
-//     uint8_t* message,
-//     size_t message_len,
-//     void* args
-// );
+struct mctp_inst_t;
+typedef struct mctp_inst_t mctp_inst_t;
+
+struct mctp_binding_t;
+typedef struct mctp_binding_t mctp_binding_t;
 
 typedef void (*mctp_ctrl_message_rx_t)(
+    mctp_inst_t* mctp_inst,
+    mctp_binding_t* core_binding,
     mctp_eid_t receiver,
     mctp_eid_t sender,
     uint8_t message_tag,
     bool tag_owner,
-    bool integrity_check,
     mctp_ctrl_header_t* ctrl_header,
     uint8_t* message_body,
     size_t body_len,
@@ -46,21 +43,16 @@ typedef void (*mctp_ctrl_message_rx_t)(
 );
 
 typedef void (*mctp_pldm_message_rx_t)(
+    mctp_inst_t* mctp_inst,
+    mctp_binding_t* core_binding,
     mctp_eid_t receiver,
     mctp_eid_t sender,
     uint8_t message_tag,
     bool tag_owner,
-    bool integrity_check,
     uint8_t* message,
     size_t message_len,
     void* args
 );
-
-struct mctp_inst_t;
-typedef struct mctp_inst_t mctp_inst_t;
-
-struct mctp_binding_t;
-typedef struct mctp_binding_t mctp_binding_t;
 
 
 mctp_inst_t* mctp_init();
@@ -71,8 +63,7 @@ void mctp_destroy(
 
 void mctp_register_bus(
     mctp_inst_t* mctp_inst, 
-    mctp_binding_t *binding,
-	mctp_eid_t eid
+    mctp_binding_t *binding
 );
 
 void mctp_unregister_bus(
@@ -85,10 +76,20 @@ void mctp_set_bus_eid(
     mctp_eid_t eid
 );
 
+mctp_eid_t mctp_get_bus_eid(
+    mctp_binding_t *binding
+);
+
 void mctp_set_ctrl_message_rx_callback(
     mctp_inst_t* mctp_inst,
-    mctp_ctrl_message_rx_t ctrl_message_rx,
-    void* ctrl_message_args
+    mctp_ctrl_message_rx_t ctrl_message_rx_callback,
+    void* ctrl_message_rx_args
+);
+
+void mctp_set_pldm_message_rx_callback(
+    mctp_inst_t* mctp_inst,
+    mctp_pldm_message_rx_t pldm_message_rx_callback,
+    void* pldm_message_rx_args
 );
 
 void mctp_message_tx(

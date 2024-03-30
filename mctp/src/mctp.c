@@ -16,7 +16,6 @@ typedef struct mctp_inst_t
     void* ctrl_message_rx_args;
     mctp_pldm_message_rx_t pldm_message_rx_callback;
     void* pldm_message_rx_args;
-
 }
 mctp_inst_t;
 
@@ -47,6 +46,7 @@ static uint8_t* mctp_message_assemble(
 
 static void mctp_messsage_rx(
     mctp_inst_t* mctp_inst,
+    mctp_binding_t* core_binding,
     mctp_eid_t receiver,
     mctp_eid_t sender,
     uint8_t message_tag,
@@ -77,8 +77,7 @@ void mctp_destroy(
 
 void mctp_register_bus(
     mctp_inst_t* mctp_inst, 
-    mctp_binding_t *binding,
-	mctp_eid_t eid
+    mctp_binding_t *binding
 )
 {
     mctp_bus_t* bus = malloc(sizeof(mctp_bus_t));
@@ -87,7 +86,7 @@ void mctp_register_bus(
     {
         memset(bus, 0, sizeof(mctp_bus_t));
 
-        bus->eid = eid;
+        bus->eid = MCTP_EID_NULL;
         bus->binding = binding;
         bus->mctp_inst = mctp_inst;
 
@@ -106,7 +105,36 @@ void mctp_unregister_bus(
     binding->bus = NULL;
 }
 
+void mctp_set_bus_eid(
+    mctp_binding_t *binding,
+    mctp_eid_t eid
+)
+{
+    if(binding != NULL)
+    {
+        if(binding->bus != NULL)
+        {
+            binding->bus->eid = eid;
+        }
+    }
+}
 
+mctp_eid_t mctp_get_bus_eid(
+    mctp_binding_t *binding
+)
+{
+    if(binding == NULL)
+    {
+        return MCTP_EID_NULL;
+    }
+
+    if(binding->bus == NULL)
+    {
+        return MCTP_EID_NULL;
+    }
+
+    return binding->bus->eid;
+}
 
 void mctp_set_ctrl_message_rx_callback(
     mctp_inst_t* mctp_inst,
@@ -116,6 +144,16 @@ void mctp_set_ctrl_message_rx_callback(
 {
     mctp_inst->ctrl_message_rx_callback = ctrl_message_rx_callback;
     mctp_inst->ctrl_message_rx_args = ctrl_message_rx_args;
+}
+
+void mctp_set_pldm_message_rx_callback(
+    mctp_inst_t* mctp_inst,
+    mctp_pldm_message_rx_t pldm_message_rx_callback,
+    void* pldm_message_rx_args
+)
+{
+    mctp_inst->pldm_message_rx_callback = pldm_message_rx_callback;
+    mctp_inst->pldm_message_rx_args = pldm_message_rx_args;
 }
 
 void mctp_message_tx(
@@ -182,7 +220,7 @@ void mctp_message_disassemble(
         uint8_t* packet_data = mctp_packet_buffer_data(packet);
 
         memcpy(packet_header, &mctp_header, sizeof(mctp_header_t));
-        memcpy(packet_data, &message[payload_offset], sizeof(mctp_header_t));
+        memcpy(packet_data, &message[payload_offset], payload_size);
         packet->buffer_len = packet_size;
 
         if (tx_queue_tail != NULL)
@@ -262,11 +300,12 @@ void mctp_transaction_rx(
         {
             mctp_messsage_rx(
                 bus->mctp_inst,
+                bus->binding,
                 mctp_header->destination,
                 mctp_header->source,
                 mctp_header->message_tag,
                 mctp_header->tag_owner,
-                transaction->buffer,
+                mctp_packet_buffer_data(transaction),
                 MCTP_PAYLOAD_SIZE(transaction->buffer_len)
             );
 
@@ -322,6 +361,7 @@ void mctp_transaction_rx(
 
             mctp_messsage_rx(
                 bus->mctp_inst,
+                bus->binding,
                 mctp_header->destination,
                 mctp_header->source,
                 mctp_header->message_tag,
@@ -368,6 +408,7 @@ uint8_t* mctp_message_assemble(
 
 void mctp_messsage_rx(
     mctp_inst_t* mctp_inst,
+    mctp_binding_t* core_binding,
     mctp_eid_t receiver,
     mctp_eid_t sender,
     uint8_t message_tag,
@@ -392,7 +433,7 @@ void mctp_messsage_rx(
                 break;
             }
 
-            mctp_ctrl_header_t* ctrl_header = (mctp_ctrl_header_t*)(generic_header + 1);
+            mctp_ctrl_header_t* ctrl_header = (mctp_ctrl_header_t*)(generic_header);
             uint8_t* message_body = (uint8_t*)(ctrl_header + 1);
             size_t body_len = message_len - (sizeof(mctp_ctrl_header_t) + sizeof(mctp_generic_header_t));
 
@@ -402,11 +443,12 @@ void mctp_messsage_rx(
             }
 
             mctp_inst->ctrl_message_rx_callback(
+                mctp_inst,
+                core_binding,
                 receiver,
                 sender,
                 message_tag,
                 tag_owner,
-                generic_header->integrity_check,
                 ctrl_header,
                 message_body,
                 body_len,
@@ -423,11 +465,12 @@ void mctp_messsage_rx(
             }
 
             mctp_inst->pldm_message_rx_callback(
+                mctp_inst,
+                core_binding,
                 receiver,
                 sender,
                 message_tag,
                 tag_owner,
-                generic_header->integrity_check,
                 message,
                 message_len,
                 mctp_inst->pldm_message_rx_args

@@ -16,12 +16,13 @@ typedef enum mctp_msg_type_t
     MCTP_MSG_TYPE_NVM_EXPRESS   = 0x04,
     MCTP_MSG_TYPE_VENDOR_PCI    = 0x7E,
     MCTP_MSG_TYPE_VENDOR_IANA   = 0x7F,
+    MCTP_MSG_TYPE_BASE_SPEC     = 0xFF,
 }
 mctp_msg_type_t;
 
-typedef struct mctp_generic_header_t
+typedef struct __attribute__ ((__packed__)) mctp_generic_header_t
 {
-    mctp_msg_type_t type : 7;
+    uint8_t type : 7;
     bool integrity_check : 1;
 }
 mctp_generic_header_t;

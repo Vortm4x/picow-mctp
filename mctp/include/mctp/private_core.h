@@ -38,7 +38,7 @@ typedef struct mctp_bus_t {
 }
 mctp_bus_t;
 
-typedef struct mctp_header_t
+typedef struct __attribute__ ((__packed__)) mctp_header_t
 {
     uint8_t version : 4;
     uint8_t : 4;
