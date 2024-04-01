@@ -6,6 +6,7 @@
 #include <mctp/mctp.h>
 #include <mctp/serial.h>
 #include <mctp/control.h>
+#include <pldm/pldm.h>
 #include "control_handler.h"
 
 

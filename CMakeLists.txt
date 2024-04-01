@@ -14,6 +14,8 @@ pico_sdk_init()
 
 
 add_subdirectory(mctp)
+add_subdirectory(pldm)
+
 
 add_executable(${PROJECT_NAME}
     src/main.c
@@ -25,6 +27,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     pico_cyw43_arch_none
     LWIP_PORT
     mctp
+    pldm
 )
 
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall)
