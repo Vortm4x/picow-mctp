@@ -231,7 +231,7 @@ void handle_req_get_mctp_ver(
 
     mctp_req_get_mctp_ver_t* req = (mctp_req_get_mctp_ver_t*)ctrl_header;
 
-    switch (req->message_type)
+    switch ((uint8_t)req->message_type)
     {
         case MCTP_MSG_TYPE_BASE_SPEC:
         case MCTP_MSG_TYPE_CONTROL:

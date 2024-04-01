@@ -7,9 +7,6 @@
 
 typedef uint8_t mctp_eid_t;
 
-enum mctp_msg_type_t;
-typedef enum mctp_msg_type_t mctp_msg_type_t;
-
 typedef enum __attribute__ ((__packed__)) mctp_ctrl_cmd_t
 {
     MCTP_CTRL_CMD_RESERVED                          = 0x00,
@@ -198,6 +195,7 @@ typedef union __attribute__ ((__packed__)) mctp_ver_t
 }
 mctp_ver_t;
 
+#define MCTP_MSG_TYPE_BASE_SPEC 0xFF
 
 typedef struct __attribute__ ((__packed__)) mctp_req_get_mctp_ver_t
 {
@@ -301,8 +299,8 @@ typedef struct __attribute__ ((__packed__)) mctp_resp_alloc_eid_t
 {
     mctp_ctrl_header_t header;
     mctp_ctrl_cc_t completion_code;
-    mctp_eid_assign_status_t eid_assign_status : 2;
-    uint8_t                             : 6;
+    mctp_eid_assign_status_t eid_assign_status  : 2;
+    uint8_t                                     : 6;
     uint8_t eid_pool_size;
     mctp_eid_t start_eid;
 }

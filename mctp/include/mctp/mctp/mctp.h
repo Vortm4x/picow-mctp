@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <mctp/uuid.h>
+#include <mctp/msg_type.h>
 
 #define MCTP_VERSION                0x01
 #define MCTP_EID_NULL	            0x00
@@ -63,18 +64,6 @@ typedef enum __attribute__ ((__packed__)) mctp_physical_medium_t
 }
 mctp_physical_medium_t;
 
-typedef enum __attribute__ ((__packed__)) mctp_msg_type_t
-{
-    MCTP_MSG_TYPE_CONTROL       = 0x00,
-    MCTP_MSG_TYPE_PLDM          = 0x01,
-    MCTP_MSG_TYPE_NCSI          = 0x02,
-    MCTP_MSG_TYPE_ETHERNET      = 0x03,
-    MCTP_MSG_TYPE_NVM_EXPRESS   = 0x04,
-    MCTP_MSG_TYPE_VENDOR_PCI    = 0x7E,
-    MCTP_MSG_TYPE_VENDOR_IANA   = 0x7F,
-    MCTP_MSG_TYPE_BASE_SPEC     = 0xFF,
-}
-mctp_msg_type_t;
 
 typedef enum __attribute__ ((__packed__)) mctp_host_interface_type_t
 {
@@ -96,13 +85,6 @@ typedef enum __attribute__ ((__packed__)) mctp_host_interface_type_t
     MCTP_HOST_MMBI          = 0x0C,
 }
 mctp_host_interface_type_t;
-
-typedef struct __attribute__ ((__packed__)) mctp_generic_header_t
-{
-    uint8_t type : 7;
-    bool integrity_check : 1;
-}
-mctp_generic_header_t;
 
 typedef void (*mctp_message_rx_t)(
     mctp_inst_t* mctp_inst,
