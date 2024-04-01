@@ -10,11 +10,12 @@ add_library (${PROJECT_NAME} STATIC
     src/packet_buffer.c
     src/message_ctx.c
     src/crc16.c
+    src/uuid.c
 )
 
 target_link_libraries(${PROJECT_NAME} 
     pico_stdlib
-    hardware_uart
+    pico_rand
 )
 
 target_include_directories (${PROJECT_NAME}

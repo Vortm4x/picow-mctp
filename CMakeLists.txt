@@ -17,6 +17,7 @@ add_subdirectory(mctp)
 
 add_executable(${PROJECT_NAME}
     src/main.c
+    src/control_handler.c
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE
     pico_stdlib

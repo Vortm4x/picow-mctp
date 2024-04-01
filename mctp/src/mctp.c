@@ -5,16 +5,16 @@
 #include <private_core.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <uuid.h>
 
 
 typedef struct mctp_inst_t
 {
     mctp_bus_t* bus;
 	size_t max_msg_size;
-    mctp_ctrl_message_rx_t ctrl_message_rx_callback;
+    mctp_message_rx_t ctrl_message_rx_callback;
     void* ctrl_message_rx_args;
-    mctp_pldm_message_rx_t pldm_message_rx_callback;
+    mctp_message_rx_t pldm_message_rx_callback;
     void* pldm_message_rx_args;
 }
 mctp_inst_t;
@@ -87,6 +87,7 @@ void mctp_register_bus(
         memset(bus, 0, sizeof(mctp_bus_t));
 
         bus->eid = MCTP_EID_NULL;
+        bus->is_eid_assigned = false;
         bus->binding = binding;
         bus->mctp_inst = mctp_inst;
 
@@ -107,7 +108,8 @@ void mctp_unregister_bus(
 
 void mctp_set_bus_eid(
     mctp_binding_t *binding,
-    mctp_eid_t eid
+    mctp_eid_t eid,
+    bool is_assigned
 )
 {
     if(binding != NULL)
@@ -115,6 +117,8 @@ void mctp_set_bus_eid(
         if(binding->bus != NULL)
         {
             binding->bus->eid = eid;
+            binding->bus->is_eid_assigned = is_assigned && (eid != MCTP_EID_NULL);
+            uuid_gen(&binding->bus->uuid);
         }
     }
 }
@@ -136,9 +140,44 @@ mctp_eid_t mctp_get_bus_eid(
     return binding->bus->eid;
 }
 
+bool mctp_is_bus_eid_assigned(
+    mctp_binding_t *binding
+)
+{
+    if(binding == NULL)
+    {
+        return false;
+    }
+
+    if(binding->bus == NULL)
+    {
+        return false;
+    }
+
+    return binding->bus->is_eid_assigned;
+}
+
+void mctp_get_bus_uuid(
+    mctp_binding_t *binding,
+    mctp_uuid_t* uuid
+)
+{
+    if(binding != NULL)
+    {
+        if(binding->bus != NULL)
+        {
+            memcpy(uuid->bytes, binding->bus->uuid.bytes, sizeof(uuid->bytes));
+
+            return;
+        }
+    }
+
+    memset(uuid->bytes, 0, sizeof(uuid->bytes));
+}
+
 void mctp_set_ctrl_message_rx_callback(
     mctp_inst_t* mctp_inst,
-    mctp_ctrl_message_rx_t ctrl_message_rx_callback,
+    mctp_message_rx_t ctrl_message_rx_callback,
     void* ctrl_message_rx_args
 )
 {
@@ -148,7 +187,7 @@ void mctp_set_ctrl_message_rx_callback(
 
 void mctp_set_pldm_message_rx_callback(
     mctp_inst_t* mctp_inst,
-    mctp_pldm_message_rx_t pldm_message_rx_callback,
+    mctp_message_rx_t pldm_message_rx_callback,
     void* pldm_message_rx_args
 )
 {
@@ -280,7 +319,8 @@ void mctp_transaction_rx(
 
     mctp_header_t* mctp_header = mctp_packet_buffer_header(transaction);
 
-    if(mctp_header->destination != bus->eid)
+    if(mctp_header->destination != bus->eid
+    && mctp_header->destination != MCTP_EID_BROADCAST)
     {
         mctp_packet_buffer_destroy(transaction);
         return;
@@ -428,20 +468,6 @@ void mctp_messsage_rx(
                 break;
             }
 
-            if(message_len < sizeof(mctp_ctrl_header_t) + sizeof(mctp_generic_header_t))
-            {
-                break;
-            }
-
-            mctp_ctrl_header_t* ctrl_header = (mctp_ctrl_header_t*)(generic_header);
-            uint8_t* message_body = (uint8_t*)(ctrl_header + 1);
-            size_t body_len = message_len - (sizeof(mctp_ctrl_header_t) + sizeof(mctp_generic_header_t));
-
-            if(body_len == 0)
-            {
-                message_body = NULL;
-            }
-
             mctp_inst->ctrl_message_rx_callback(
                 mctp_inst,
                 core_binding,
@@ -449,9 +475,8 @@ void mctp_messsage_rx(
                 sender,
                 message_tag,
                 tag_owner,
-                ctrl_header,
-                message_body,
-                body_len,
+                message,
+                message_len,
                 mctp_inst->ctrl_message_rx_args
             );
         }

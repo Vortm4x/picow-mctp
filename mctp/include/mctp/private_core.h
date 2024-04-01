@@ -31,6 +31,8 @@ mctp_binding_t;
 
 typedef struct mctp_bus_t {
 	mctp_eid_t eid;
+    bool is_eid_assigned;
+    mctp_uuid_t uuid;
 	mctp_binding_t* binding;
     mctp_inst_t* mctp_inst;
 	mctp_packet_buffer_t* tx_queue_head;
