@@ -196,8 +196,8 @@ void handle_req_get_endpoint_uuid(
         .completion_code = MCTP_CTRL_CC_SUCCESS,
     };
 
-    mctp_get_bus_uuid(core_binding, &resp.uuid);    
-
+    mctp_get_uuid(mctp_inst, &resp.uuid);
+    
     mctp_message_tx(
         mctp_inst,
         sender,

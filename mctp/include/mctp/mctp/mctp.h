@@ -129,8 +129,8 @@ bool mctp_is_bus_eid_assigned(
     mctp_binding_t *binding
 );
 
-void mctp_get_bus_uuid(
-    mctp_binding_t *binding,
+void mctp_get_uuid(
+    mctp_inst_t* mctp_inst,
     mctp_uuid_t* uuid
 );
 

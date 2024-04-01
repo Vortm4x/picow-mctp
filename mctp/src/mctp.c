@@ -11,7 +11,7 @@
 typedef struct mctp_inst_t
 {
     mctp_bus_t* bus;
-	size_t max_msg_size;
+    mctp_uuid_t uuid;
     mctp_message_rx_t ctrl_message_rx_callback;
     void* ctrl_message_rx_args;
     mctp_message_rx_t pldm_message_rx_callback;
@@ -63,6 +63,8 @@ mctp_inst_t* mctp_init()
     if(mctp_inst != NULL)
     {
         memset(mctp_inst, 0, sizeof(mctp_inst_t));
+
+        uuid_gen(&mctp_inst->uuid);
     }
 
     return mctp_inst;
@@ -118,7 +120,6 @@ void mctp_set_bus_eid(
         {
             binding->bus->eid = eid;
             binding->bus->is_eid_assigned = is_assigned && (eid != MCTP_EID_NULL);
-            uuid_gen(&(binding->bus->uuid));
         }
     }
 }
@@ -157,22 +158,19 @@ bool mctp_is_bus_eid_assigned(
     return binding->bus->is_eid_assigned;
 }
 
-void mctp_get_bus_uuid(
-    mctp_binding_t *binding,
+void mctp_get_uuid(
+    mctp_inst_t* mctp_inst,
     mctp_uuid_t* uuid
 )
 {
-    if(binding != NULL)
+    if(mctp_inst != NULL)
     {
-        if(binding->bus != NULL)
-        {
-            memcpy(uuid->bytes, binding->bus->uuid.bytes, sizeof(uuid->bytes));
-
-            return;
-        }
+        memcpy(uuid->bytes, mctp_inst->uuid.bytes, sizeof(uuid->bytes));
     }
-
-    memset(uuid->bytes, 0, sizeof(uuid->bytes));
+    else
+    {
+        memset(uuid->bytes, 0, sizeof(uuid->bytes));
+    }
 }
 
 void mctp_set_ctrl_message_rx_callback(
