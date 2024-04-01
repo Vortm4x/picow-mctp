@@ -118,7 +118,7 @@ void mctp_set_bus_eid(
         {
             binding->bus->eid = eid;
             binding->bus->is_eid_assigned = is_assigned && (eid != MCTP_EID_NULL);
-            uuid_gen(&binding->bus->uuid);
+            uuid_gen(&(binding->bus->uuid));
         }
     }
 }
@@ -320,7 +320,8 @@ void mctp_transaction_rx(
     mctp_header_t* mctp_header = mctp_packet_buffer_header(transaction);
 
     if(mctp_header->destination != bus->eid
-    && mctp_header->destination != MCTP_EID_BROADCAST)
+    && mctp_header->destination != MCTP_EID_BROADCAST
+    && mctp_header->destination != MCTP_EID_NULL)
     {
         mctp_packet_buffer_destroy(transaction);
         return;

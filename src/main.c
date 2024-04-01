@@ -30,6 +30,18 @@ void mctp_uart_raw_tx_callback(
     void* args
 );
 
+void mctp_message_tx_echo(
+    mctp_inst_t* mctp_inst,
+    mctp_binding_t* core_binding,
+    mctp_eid_t receiver,
+    mctp_eid_t sender,
+    uint8_t message_tag,
+    bool tag_owner,
+    uint8_t* message,
+    size_t message_len,
+    void* args
+);
+
 void mctp_ctrl_message_rx_callback(
     mctp_inst_t* mctp_inst,
     mctp_binding_t* core_binding,
@@ -107,6 +119,35 @@ void mctp_uart_raw_tx_callback(
     uart_inst_t* uart_id = uart_get_instance(UART_INDEX);
 
     uart_write_blocking(uart_id, buffer, buffer_len);
+}
+
+void mctp_message_tx_echo(
+    mctp_inst_t* mctp_inst,
+    mctp_binding_t* core_binding,
+    mctp_eid_t receiver,
+    mctp_eid_t sender,
+    uint8_t message_tag,
+    bool tag_owner,
+    uint8_t* message,
+    size_t message_len,
+    void* args
+)
+{
+    mctp_eid_t old_eid = mctp_get_bus_eid(core_binding);
+    bool is_old_assigned = mctp_is_bus_eid_assigned(core_binding);
+
+    mctp_set_bus_eid(core_binding, sender, false);
+
+    mctp_message_tx(
+        mctp_inst,
+        receiver,
+        tag_owner,
+        message_tag,
+        message,
+        message_len
+    );
+
+    mctp_set_bus_eid(core_binding, old_eid, is_old_assigned);
 }
 
 void mctp_ctrl_message_rx_callback(
@@ -234,6 +275,7 @@ void mctp_pldm_message_rx_callback(
     void* args
 )
 {
+    mctp_dump_transport(receiver, sender, message_tag, tag_owner);
 
 }
 
@@ -280,6 +322,8 @@ int main()
     mctp_binding_t* core_binding = mctp_serial_get_core_binding(serial_binding);
 
     mctp_register_bus(mctp_inst, core_binding);
+    mctp_set_bus_eid(core_binding, MCTP_LOCAL_EID, false);
+
     mctp_serial_set_raw_tx_callback(serial_binding, mctp_uart_raw_tx_callback, NULL);
     mctp_set_ctrl_message_rx_callback(mctp_inst, mctp_ctrl_message_rx_callback, NULL);
     mctp_set_pldm_message_rx_callback(mctp_inst, mctp_pldm_message_rx_callback, NULL);

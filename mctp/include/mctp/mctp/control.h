@@ -57,7 +57,6 @@ typedef struct __attribute__ ((__packed__)) mctp_ctrl_header_t
     bool datagram       : 1;
     bool request        : 1;
     mctp_ctrl_cmd_t command;
-    uint8_t msg_body[];
 }
 mctp_ctrl_header_t;
 

@@ -79,7 +79,7 @@ void handle_req_set_endpoint_id(
                 );
             }
 
-            if(mctp_is_bus_eid_assigned(core_binding))
+            if(!mctp_is_bus_eid_assigned(core_binding))
             {
                 mctp_set_bus_eid(
                     core_binding, 

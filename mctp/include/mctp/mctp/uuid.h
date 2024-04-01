@@ -17,9 +17,9 @@ typedef union __attribute__ ((__packed__)) mctp_uuid_t
     };
     
     uint8_t bytes[16];
+    uint64_t rng_map[2];
 }
 mctp_uuid_t;
-
 
 void uuid_gen(mctp_uuid_t* uuid);
 
