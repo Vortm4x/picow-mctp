@@ -7,6 +7,7 @@
 #include <mctp/serial.h>
 #include <mctp/control.h>
 #include <pldm/pldm.h>
+#include <pldm/mctp_transport.h>
 #include "control_handler.h"
 
 
@@ -275,9 +276,30 @@ void mctp_pldm_message_rx_callback(
     size_t message_len,
     void* args
 )
-{
+{   
     mctp_dump_transport(receiver, sender, message_tag, tag_owner);
 
+    pldm_inst_t* pldm_inst = (pldm_inst_t*)pldm_inst;
+
+    
+/*
+    if(mctp_get_bus_eid(receiver) == MCTP_EID_NULL)
+    {
+
+    }
+*/
+
+    
+
+    
+    // pldm_mctp_message_rx(
+    //     mctp_transport,
+    //     sender,
+    //     message_tag,
+    //     tag_owner,
+    //     message,
+    //     message_len
+    // );
 }
 
 void mctp_dump_transport(
@@ -322,12 +344,20 @@ int main()
     mctp_serial_binding_t* serial_binding = mctp_serial_init();
     mctp_binding_t* core_binding = mctp_serial_get_core_binding(serial_binding);
 
-    mctp_register_bus(mctp_inst, core_binding);
-    mctp_set_bus_eid(core_binding, MCTP_LOCAL_EID, false);
+    pldm_inst_t* pldm_inst = pldm_init();
+    pldm_mctp_transport_t* mctp_transport = pldm_mctp_init();
+    pldm_transport_t* core_transport = pldm_mctp_get_core_transport(mctp_transport);
+
+
 
     mctp_serial_set_raw_tx_callback(serial_binding, mctp_uart_raw_tx_callback, NULL);
     mctp_set_ctrl_message_rx_callback(mctp_inst, mctp_ctrl_message_rx_callback, NULL);
+    mctp_register_bus(mctp_inst, core_binding);
+
     mctp_set_pldm_message_rx_callback(mctp_inst, mctp_pldm_message_rx_callback, NULL);
+    pldm_register_terminus(pldm_inst, core_transport);
+    
+
 
     while (true)
     {
@@ -336,6 +366,9 @@ int main()
             mctp_serial_byte_rx(serial_binding, uart_getc(uart_id));
         }
     }
+
+    pldm_mctp_destroy(mctp_transport);
+    pldm_destroy(pldm_inst);
 
     mctp_serial_destroy(serial_binding);
     mctp_destroy(mctp_inst);

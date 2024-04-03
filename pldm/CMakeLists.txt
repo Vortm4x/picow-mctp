@@ -6,6 +6,7 @@ set(PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_library (${PROJECT_NAME} STATIC
     src/pldm.c
+    src/mctp_transport.c
 )
 
 target_link_libraries(${PROJECT_NAME} 

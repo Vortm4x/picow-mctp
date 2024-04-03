@@ -68,7 +68,7 @@ pldm_req_set_tid_t;
 typedef struct __attribute__ ((__packed__)) pldm_resp_set_tid_t
 {
     pldm_base_header_t header;
-    pldm_base_cc_t completion_code;
+    pldm_cmd_cc_t completion_code;
 }
 pldm_resp_set_tid_t;
 
@@ -85,7 +85,7 @@ pldm_req_get_tid_t;
 typedef struct __attribute__ ((__packed__)) pldm_resp_get_tid_t
 {
     pldm_base_header_t header;
-    pldm_base_cc_t completion_code;
+    pldm_cmd_cc_t completion_code;
     pldm_tid_t tid;
 }
 pldm_resp_get_tid_t;
@@ -122,7 +122,7 @@ pldm_req_get_pldm_ver_t;
 typedef struct __attribute__ ((__packed__)) pldm_resp_get_pldm_ver_t
 {
     pldm_base_header_t header;
-    pldm_base_cc_t completion_code;
+    pldm_cmd_cc_t completion_code;
     uint32_t next_xfer_handle;
     pldm_xfer_pos_t xfer_pos;
     pldm_ver_t version;
@@ -142,7 +142,7 @@ pldm_req_get_pldm_type_t;
 typedef struct __attribute__ ((__packed__)) pldm_resp_get_pldm_type_t
 {
     pldm_base_header_t header;
-    pldm_base_cc_t completion_code;
+    pldm_cmd_cc_t completion_code;
     pldm_protocol_support_t protocol_support;
 }
 pldm_resp_get_pldm_type_t;
@@ -162,7 +162,7 @@ pldm_req_get_pldm_cmd_t;
 typedef struct __attribute__ ((__packed__)) pldm_resp_get_pldm_cmd_t
 {
     pldm_base_header_t header;
-    pldm_base_cc_t completion_code;
+    pldm_cmd_cc_t completion_code;
     pldm_cmd_support_t cmd_support;
 }
 pldm_resp_get_pldm_cmd_t;
@@ -182,7 +182,7 @@ pldm_req_select_pldm_ver_t;
 typedef struct __attribute__ ((__packed__)) pldm_resp_select_pldm_ver_t
 {
     pldm_base_header_t header;
-    pldm_base_cc_t completion_code;
+    pldm_cmd_cc_t completion_code;
 }
 pldm_resp_select_pldm_ver_t;
 
@@ -201,7 +201,7 @@ pldm_req_negotiate_xfer_params_t;
 typedef struct __attribute__ ((__packed__)) pldm_resp_negotiate_xfer_params_t
 {
     pldm_base_header_t header;
-    pldm_base_cc_t completion_code;
+    pldm_cmd_cc_t completion_code;
     uint16_t part_size;
     pldm_protocol_support_t protocol_support;
 }
@@ -230,7 +230,7 @@ pldm_req_multipart_send_t;
 typedef struct __attribute__ ((__packed__)) pldm_resp_multipart_send_t
 {
     pldm_base_header_t header;
-    pldm_base_cc_t completion_code;
+    pldm_cmd_cc_t completion_code;
     pldm_xfer_op_t xfer_op;
 }
 pldm_resp_multipart_send_t;
@@ -253,7 +253,7 @@ pldm_req_multipart_receive_t;
 typedef struct __attribute__ ((__packed__)) pldm_resp_multipart_receive_t
 {
     pldm_base_header_t header;
-    pldm_base_cc_t completion_code;
+    pldm_cmd_cc_t completion_code;
     pldm_xfer_pos_t xfer_pos;
     uint32_t next_xfer_handle;
     uint32_t data_len;
