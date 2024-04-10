@@ -1,7 +1,124 @@
 #include <string.h>
 #include "control_handler.h"
+#include "dump.h"
 
-void handle_error(
+
+void mctp_ctrl_message_rx_callback(
+    mctp_inst_t* mctp_inst,
+    mctp_binding_t* core_binding,
+    mctp_eid_t receiver,
+    mctp_eid_t sender,
+    uint8_t message_tag,
+    bool tag_owner,
+    uint8_t* message,
+    size_t message_len,
+    void* args
+)
+{
+    mctp_ctrl_header_t* ctrl_header = (mctp_ctrl_header_t*)message;
+
+    mctp_dump_transport(receiver, sender, message_tag, tag_owner);
+    mctp_dump_ctrl(ctrl_header);
+
+    switch (ctrl_header->command)
+    {
+        case MCTP_CTRL_CMD_SET_ENDPOINT_ID:
+        {
+            if(tag_owner && ctrl_header->request)
+            {
+                handle_req_set_endpoint_id(
+                    mctp_inst,
+                    core_binding,
+                    sender,
+                    message_tag,
+                    ctrl_header,
+                    message_len
+                );
+            }
+        }
+        break;
+
+        case MCTP_CTRL_CMD_GET_ENDPOINT_ID:
+        {
+            if(tag_owner && ctrl_header->request)
+            {
+                handle_req_get_endpoint_id(
+                    mctp_inst,
+                    core_binding,
+                    sender,
+                    message_tag,
+                    ctrl_header,
+                    message_len
+                );
+            }
+        }
+        break;
+
+        case MCTP_CTRL_CMD_GET_ENDPOINT_UUID:
+        {
+            if(tag_owner && ctrl_header->request)
+            {
+                handle_req_get_endpoint_uuid(
+                    mctp_inst,
+                    core_binding,
+                    sender,
+                    message_tag,
+                    ctrl_header,
+                    message_len
+                );
+            }
+        }
+        break;
+
+        case MCTP_CTRL_CMD_GET_VERSION_SUPPORT:
+        {
+            if(tag_owner && ctrl_header->request)
+            {
+                handle_req_get_mctp_ver(
+                    mctp_inst,
+                    core_binding,
+                    sender,
+                    message_tag,
+                    ctrl_header,
+                    message_len
+                );
+            }
+        }
+        break;
+
+        case MCTP_CTRL_CMD_GET_MESSAGE_TYPE_SUPPORT:
+        {
+            if(tag_owner && ctrl_header->request)
+            {
+                handle_req_get_msg_type(
+                    mctp_inst,
+                    core_binding,
+                    sender,
+                    message_tag,
+                    ctrl_header,
+                    message_len
+                );
+            }   
+        }
+        break;
+
+        default:
+        {
+            handle_mctp_error(
+                mctp_inst,
+                core_binding,
+                sender,
+                message_tag,
+                ctrl_header,
+                MCTP_CTRL_CC_MSG_TYPE_NOT_SUPPORTED
+            );
+        };
+        break;
+    }
+}
+
+
+void handle_mctp_error(
     mctp_inst_t* mctp_inst,
     mctp_binding_t* core_binding,
     mctp_eid_t sender,
@@ -20,7 +137,7 @@ void handle_error(
     };
 
     mctp_message_tx(
-        mctp_inst,
+        core_binding,
         mctp_get_bus_eid(core_binding),
         false,
         message_tag,
@@ -41,7 +158,7 @@ void handle_req_set_endpoint_id(
 {
     if(message_len != sizeof(mctp_req_set_endpoint_id_t))
     {
-        return handle_error(
+        return handle_mctp_error(
             mctp_inst,
             core_binding,
             sender,
@@ -69,7 +186,7 @@ void handle_req_set_endpoint_id(
         {
             if(req->eid == MCTP_EID_NULL || req->eid == MCTP_EID_BROADCAST)
             {
-                return handle_error(
+                return handle_mctp_error(
                     mctp_inst,
                     core_binding,
                     sender,
@@ -98,7 +215,7 @@ void handle_req_set_endpoint_id(
 
         default:
         {        
-            return handle_error(
+            return handle_mctp_error(
                 mctp_inst,
                 core_binding,
                 sender,
@@ -113,7 +230,7 @@ void handle_req_set_endpoint_id(
     resp.eid_setting = mctp_get_bus_eid(core_binding);
 
     mctp_message_tx(
-        mctp_inst,
+        core_binding,
         sender,
         false,
         message_tag,
@@ -134,7 +251,7 @@ void handle_req_get_endpoint_id(
 {
     if(message_len != sizeof(mctp_req_get_endpoint_id_t))
     {
-        return handle_error(
+        return handle_mctp_error(
             mctp_inst,
             core_binding,
             sender,
@@ -157,7 +274,7 @@ void handle_req_get_endpoint_id(
     };
 
     mctp_message_tx(
-        mctp_inst,
+        core_binding,
         sender,
         false,
         message_tag,
@@ -177,7 +294,7 @@ void handle_req_get_endpoint_uuid(
 {
     if(message_len != sizeof(mctp_req_get_endpoint_uuid_t))
     {
-        return handle_error(
+        return handle_mctp_error(
             mctp_inst,
             core_binding,
             sender,
@@ -199,7 +316,7 @@ void handle_req_get_endpoint_uuid(
     mctp_get_uuid(mctp_inst, &resp.uuid);
     
     mctp_message_tx(
-        mctp_inst,
+        core_binding,
         sender,
         false,
         message_tag,
@@ -219,7 +336,7 @@ void handle_req_get_mctp_ver(
 {
     if(message_len != sizeof(mctp_req_get_mctp_ver_t))
     {
-        return handle_error(
+        return handle_mctp_error(
             mctp_inst,
             core_binding,
             sender,
@@ -230,55 +347,77 @@ void handle_req_get_mctp_ver(
     }
 
     mctp_req_get_mctp_ver_t* req = (mctp_req_get_mctp_ver_t*)ctrl_header;
+    uint8_t version_count = 0;
 
     switch ((uint8_t)req->message_type)
     {
         case MCTP_MSG_TYPE_BASE_SPEC:
         case MCTP_MSG_TYPE_CONTROL:
         {
-            uint8_t version_count = 4;
-            size_t resp_data_len = sizeof(mctp_resp_get_mctp_ver_t) + (version_count - 1) * sizeof(mctp_ver_t);
-            uint8_t resp_data[resp_data_len]; 
-            mctp_resp_get_mctp_ver_t* resp = (mctp_resp_get_mctp_ver_t*)&resp_data;
-
-            memset(resp_data, 0, resp_data_len);
-            
-            resp->header.base.type = ctrl_header->base.type;
-            resp->header.command = ctrl_header->command;
-            resp->header.instance = ctrl_header->instance;
-
-            resp->completion_code = MCTP_CTRL_CC_SUCCESS;
-            resp->version_count = version_count;
-            
-            mctp_ver_t* versions = &resp->version;
-            versions[0].version = 0xF1F0FF00;
-            versions[1].version = 0xF1F1FF00;
-            versions[2].version = 0xF1F2FF00;
-            versions[3].version = 0xF1F3F100;
-
-            mctp_message_tx(
-                mctp_inst,
-                sender,
-                false,
-                message_tag,
-                resp_data,
-                resp_data_len
-            );
+            version_count = 4;
         }
         break;
 
-        default:
+        case MCTP_MSG_TYPE_PLDM:
         {
-            return handle_error(
-                mctp_inst,
-                core_binding,
-                sender,
-                message_tag,
-                ctrl_header,
-                MCTP_CTRL_CC_MSG_TYPE_NOT_SUPPORTED
-            );
+            version_count = 2;
         }
+        break;
     }
+
+    if(version_count == 0)
+    {
+        return handle_mctp_error(
+            mctp_inst,
+            core_binding,
+            sender,
+            message_tag,
+            ctrl_header,
+            MCTP_CTRL_CC_MSG_TYPE_NOT_SUPPORTED
+        );
+    }
+
+    size_t resp_data_len = sizeof(mctp_resp_get_mctp_ver_t) + version_count * sizeof(mctp_ver_t);
+    uint8_t resp_data[resp_data_len]; 
+    mctp_resp_get_mctp_ver_t* resp = (mctp_resp_get_mctp_ver_t*)(&resp_data[0]);
+
+    memset(resp_data, 0, resp_data_len);
+    
+    resp->header.base.type = ctrl_header->base.type;
+    resp->header.command = ctrl_header->command;
+    resp->header.instance = ctrl_header->instance;
+
+    resp->completion_code = MCTP_CTRL_CC_SUCCESS;
+    resp->version_count = version_count;
+
+    switch ((uint8_t)req->message_type)
+    {
+        case MCTP_MSG_TYPE_BASE_SPEC:
+        case MCTP_MSG_TYPE_CONTROL:
+        {
+            resp->version[0].version = 0xF1F0FF00;
+            resp->version[1].version = 0xF1F1FF00;
+            resp->version[2].version = 0xF1F2FF00;
+            resp->version[3].version = 0xF1F3F100;
+        }
+        break;
+
+        case MCTP_MSG_TYPE_PLDM:
+        {
+            resp->version[0].version = 0xF1F0FF00;
+            resp->version[1].version = 0xF1F1FF00;
+        }
+        break;
+    }
+
+    mctp_message_tx(
+        core_binding,
+        sender,
+        false,
+        message_tag,
+        resp_data,
+        resp_data_len
+    );
 }
 
 void handle_req_get_msg_type(
@@ -292,7 +431,7 @@ void handle_req_get_msg_type(
 {
     if(message_len != sizeof(mctp_req_get_msg_type_t))
     {
-        return handle_error(
+        return handle_mctp_error(
             mctp_inst,
             core_binding,
             sender,
@@ -302,10 +441,10 @@ void handle_req_get_msg_type(
         );
     }
 
-    uint8_t msg_type_count = 4;
-    size_t resp_data_len = sizeof(mctp_resp_get_msg_type_t) + (msg_type_count - 1) * sizeof(mctp_msg_type_t);
+    uint8_t msg_type_count = 2;
+    size_t resp_data_len = sizeof(mctp_resp_get_msg_type_t) + msg_type_count * sizeof(mctp_msg_type_t);
     uint8_t resp_data[resp_data_len];
-    mctp_resp_get_msg_type_t* resp = (mctp_resp_get_msg_type_t*)&resp_data;
+    mctp_resp_get_msg_type_t* resp = (mctp_resp_get_msg_type_t*)(&resp_data[0]);
 
     memset(resp_data, 0, resp_data_len);
     
@@ -316,12 +455,11 @@ void handle_req_get_msg_type(
     resp->completion_code = MCTP_CTRL_CC_SUCCESS;
     resp->msg_type_count = msg_type_count;
     
-    mctp_msg_type_t* msg_types = &resp->msg_type;
-    msg_types[0] = MCTP_MSG_TYPE_CONTROL;
-    msg_types[1] = MCTP_MSG_TYPE_PLDM;
+    resp->msg_types[0] = MCTP_MSG_TYPE_CONTROL;
+    resp->msg_types[1] = MCTP_MSG_TYPE_PLDM;
 
     mctp_message_tx(
-        mctp_inst,
+        core_binding,
         sender,
         false,
         message_tag,

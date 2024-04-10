@@ -1,10 +1,23 @@
-#ifndef CONTROL_HANDLER
-#define CONTROL_HANDLER
+#ifndef CONTROL_HANDLER_H
+#define CONTROL_HANDLER_H
 
 #include <mctp/mctp.h>
 #include <mctp/control.h>
 
-void handle_error(
+
+void mctp_ctrl_message_rx_callback(
+    mctp_inst_t* mctp_inst,
+    mctp_binding_t* core_binding,
+    mctp_eid_t receiver,
+    mctp_eid_t sender,
+    uint8_t message_tag,
+    bool tag_owner,
+    uint8_t* message,
+    size_t message_len,
+    void* args
+);
+
+void handle_mctp_error(
     mctp_inst_t* mctp_inst,
     mctp_binding_t* core_binding,
     mctp_eid_t sender,
@@ -58,4 +71,4 @@ void handle_req_get_msg_type(
     size_t message_len
 );
 
-#endif
+#endif // CONTROL_HANDLER_H

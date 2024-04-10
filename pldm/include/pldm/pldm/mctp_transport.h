@@ -9,6 +9,15 @@
 struct pldm_mctp_transport_t;
 typedef struct pldm_mctp_transport_t pldm_mctp_transport_t;
 
+typedef void (*pldm_mctp_message_tx_t)(
+    uint8_t receiver,
+    uint8_t message_tag,
+    bool tag_owner,
+    uint8_t* message,
+    size_t message_len,
+    void* args
+);
+
 pldm_mctp_transport_t* pldm_mctp_init();
 
 void pldm_mctp_destroy(
@@ -21,12 +30,18 @@ pldm_transport_t* pldm_mctp_get_core_transport(
 
 void pldm_mctp_message_rx(
     pldm_mctp_transport_t* mctp_transport,
-    pldm_mctp_eid_t receiver,
-    pldm_mctp_eid_t sender,
+    uint8_t receiver,
+    uint8_t sender,
     uint8_t message_tag,
     bool tag_owner,
     uint8_t* message,
     size_t message_len
+);
+
+void pldm_mctp_set_message_tx_callback(
+    pldm_mctp_transport_t* mctp_transport,
+    pldm_mctp_message_tx_t mctp_message_tx,
+    void* mctp_message_tx_args
 );
 
 #endif // MCTP_TRANSPORT_H

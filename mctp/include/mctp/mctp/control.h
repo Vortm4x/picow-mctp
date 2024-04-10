@@ -209,7 +209,7 @@ typedef struct __attribute__ ((__packed__)) mctp_resp_get_mctp_ver_t
     mctp_ctrl_header_t header;
     mctp_ctrl_cc_t completion_code;
     uint8_t version_count;
-    mctp_ver_t version;
+    mctp_ver_t version[];
 }
 mctp_resp_get_mctp_ver_t;
 
@@ -228,7 +228,7 @@ typedef struct __attribute__ ((__packed__)) mctp_resp_get_msg_type_t
     mctp_ctrl_header_t header;
     mctp_ctrl_cc_t completion_code;
     uint8_t msg_type_count;
-    mctp_msg_type_t msg_type;
+    mctp_msg_type_t msg_types[];
 }
 mctp_resp_get_msg_type_t;
 

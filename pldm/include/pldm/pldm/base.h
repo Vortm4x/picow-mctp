@@ -3,15 +3,6 @@
 
 #include <pldm/pldm.h>
 
-typedef struct __attribute__ ((__packed__)) pldm_xfer_pos_t
-{
-    bool is_start   : 1;
-    bool is_middle  : 1;
-    bool is_end     : 1;
-    uint8_t         : 5;
-}
-pldm_xfer_pos_t;
-
 typedef enum __attribute__ ((__packed__)) pldm_xfer_op_t
 {
     PLDM_XFER_OP_FIRST      = 0,
@@ -55,7 +46,6 @@ typedef struct __attribute__ ((__packed__)) pldm_cmd_support_t
 pldm_cmd_support_t;
 
 
-
 // PLDM_BASE_CMD_SET_TID
 
 typedef struct __attribute__ ((__packed__)) pldm_req_set_tid_t
@@ -71,6 +61,7 @@ typedef struct __attribute__ ((__packed__)) pldm_resp_set_tid_t
     pldm_cmd_cc_t completion_code;
 }
 pldm_resp_set_tid_t;
+
 
 
 
@@ -94,21 +85,6 @@ pldm_resp_get_tid_t;
 
 // PLDM_BASE_CMD_GET_PLDM_VERSION
 
-typedef union __attribute__ ((__packed__)) pldm_ver_t
-{
-    struct
-    {
-        uint8_t alpha;
-        uint8_t update;
-        uint8_t minor;
-        uint8_t major;
-    };
-    
-    uint32_t version;
-}
-pldm_ver_t;
-
-
 typedef struct __attribute__ ((__packed__)) pldm_req_get_pldm_ver_t
 {
     pldm_base_header_t header;
@@ -125,10 +101,9 @@ typedef struct __attribute__ ((__packed__)) pldm_resp_get_pldm_ver_t
     pldm_cmd_cc_t completion_code;
     uint32_t next_xfer_handle;
     pldm_xfer_pos_t xfer_pos;
-    pldm_ver_t version;
+    ver32_t versions[];
 }
 pldm_resp_get_pldm_ver_t;
-
 
 
 // PLDM_BASE_CMD_GET_PLDM_TYPE
@@ -155,7 +130,7 @@ typedef struct __attribute__ ((__packed__)) pldm_req_get_pldm_cmd_t
 {
     pldm_base_header_t header;
     uint8_t pldm_type;
-    pldm_ver_t pldm_version;
+    ver32_t pldm_version;
 }
 pldm_req_get_pldm_cmd_t;
 
@@ -175,7 +150,7 @@ typedef struct __attribute__ ((__packed__)) pldm_req_select_pldm_ver_t
 {
     pldm_base_header_t header;
     uint8_t pldm_type;
-    pldm_ver_t pldm_version;
+    ver32_t pldm_version;
 }
 pldm_req_select_pldm_ver_t;
 
@@ -260,6 +235,5 @@ typedef struct __attribute__ ((__packed__)) pldm_resp_multipart_receive_t
     uint8_t data[];
 }
 pldm_resp_multipart_receive_t;
-
 
 #endif // BASE_H

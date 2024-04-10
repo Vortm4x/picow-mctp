@@ -1,6 +1,6 @@
 #include <pldm/pldm.h>
 #include <pldm/base.h>
-#include <pldm/monitor.h>
+#include <pldm/platform.h>
 #include <private_core.h>
 #include <stdlib.h>
 #include <string.h>
@@ -54,6 +54,23 @@ void pldm_unregister_terminus(
     transport->endpoint = NULL;
 }
 
+pldm_tid_t pldm_get_terminus_id(
+    pldm_transport_t* transport   
+)
+{
+    if(transport == NULL)
+    {
+        return PLDM_TID_UNASSIGNED;
+    }
+
+    if(transport->endpoint == NULL)
+    {
+        return PLDM_TID_UNASSIGNED;
+    }
+
+    return transport->endpoint->tid;
+}
+
 void pldm_set_base_message_rx_callback(
     pldm_inst_t* pldm_inst,
     pldm_message_rx_t base_message_rx,
@@ -64,14 +81,14 @@ void pldm_set_base_message_rx_callback(
     pldm_inst->base_message_args = base_message_args;
 }
 
-void pldm_set_monitor_message_rx_callback(
+void pldm_set_platform_message_rx_callback(
     pldm_inst_t* pldm_inst,
-    pldm_message_rx_t monitor_message_rx,
-    void* monitor_message_args
+    pldm_message_rx_t platform_message_rx,
+    void* platform_message_args
 )
 {
-    pldm_inst->monitor_message_rx = monitor_message_rx;
-    pldm_inst->monitor_message_args = monitor_message_args;
+    pldm_inst->platform_message_rx = platform_message_rx;
+    pldm_inst->platform_message_args = platform_message_args;
 }
 
 void pldm_set_redfish_message_rx_callback(
@@ -113,8 +130,16 @@ void pldm_message_rx(
         }
         break;
 
-        case PLDM_TYPE_MONITOR:
-        {}
+        case PLDM_TYPE_PLATFORM:
+        {
+            pldm_inst->platform_message_rx(
+                pldm_inst,
+                transport,
+                message,
+                message_len,
+                pldm_inst->platform_message_args
+            );            
+        }
         break;
 
         case PLDM_TYPE_REDFISH:
@@ -122,7 +147,49 @@ void pldm_message_rx(
         break;
 
         default:
-        {}
+        {
+            pldm_resp_error_tx(
+                transport,
+                header,
+                PLDM_CMD_CC_INVALID_PLDM_TYPE
+            );
+        }
         break;
     }
+}
+
+void pldm_message_tx(
+    pldm_transport_t* transport,
+    uint8_t* message,
+    size_t message_len
+)
+{
+    transport->message_tx(
+        transport,
+        message,
+        message_len
+    );
+}
+
+void pldm_resp_error_tx(
+    pldm_transport_t* transport,
+    pldm_base_header_t* base_header,
+    pldm_cmd_cc_t error_code
+)
+{
+    pldm_resp_error_t resp = {
+        .header = {
+            .version = base_header->version,
+            .pldm_type = base_header->pldm_type,
+            .command = base_header->command,
+            .instance = base_header->instance
+        },
+        .completion_code = error_code,
+    };
+
+    pldm_message_tx(
+        transport,
+        (uint8_t*)&resp,
+        sizeof(pldm_resp_error_t)
+    );
 }

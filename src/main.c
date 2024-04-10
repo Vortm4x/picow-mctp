@@ -7,8 +7,12 @@
 #include <mctp/serial.h>
 #include <mctp/control.h>
 #include <pldm/pldm.h>
+#include <pldm/base.h>
 #include <pldm/mctp_transport.h>
+#include "dump.h"
 #include "control_handler.h"
+#include "pldm_base_handler.h"
+#include "pldm_platform_handler.h"
 
 
 #define UART_INDEX 1
@@ -32,30 +36,6 @@ void mctp_uart_raw_tx_callback(
     void* args
 );
 
-void mctp_message_tx_echo(
-    mctp_inst_t* mctp_inst,
-    mctp_binding_t* core_binding,
-    mctp_eid_t receiver,
-    mctp_eid_t sender,
-    uint8_t message_tag,
-    bool tag_owner,
-    uint8_t* message,
-    size_t message_len,
-    void* args
-);
-
-void mctp_ctrl_message_rx_callback(
-    mctp_inst_t* mctp_inst,
-    mctp_binding_t* core_binding,
-    mctp_eid_t receiver,
-    mctp_eid_t sender,
-    uint8_t message_tag,
-    bool tag_owner,
-    uint8_t* message,
-    size_t message_len,
-    void* args
-);
-
 void mctp_pldm_message_rx_callback(
     mctp_inst_t* mctp_inst,
     mctp_binding_t* core_binding,
@@ -68,16 +48,15 @@ void mctp_pldm_message_rx_callback(
     void* args
 );
 
-void mctp_dump_transport(
-    mctp_eid_t receiver,
-    mctp_eid_t sender,
+void pldm_mctp_message_tx_callback(
+    uint8_t receiver,
     uint8_t message_tag,
-    bool tag_owner
+    bool tag_owner,
+    uint8_t* message,
+    size_t message_len,
+    void* args
 );
 
-void mctp_dump_ctrl(
-    mctp_ctrl_header_t* ctrl_header
-);
 
 bool init_all()
 {
@@ -112,6 +91,7 @@ bool init_all()
     return true;
 }
 
+
 void mctp_uart_raw_tx_callback(
     uint8_t* buffer, 
     size_t buffer_len, 
@@ -123,11 +103,9 @@ void mctp_uart_raw_tx_callback(
     uart_write_blocking(uart_id, buffer, buffer_len);
 }
 
-void mctp_message_tx_echo(
-    mctp_inst_t* mctp_inst,
-    mctp_binding_t* core_binding,
-    mctp_eid_t receiver,
-    mctp_eid_t sender,
+
+void pldm_mctp_message_tx_callback(
+    uint8_t receiver,
     uint8_t message_tag,
     bool tag_owner,
     uint8_t* message,
@@ -135,135 +113,18 @@ void mctp_message_tx_echo(
     void* args
 )
 {
-    mctp_eid_t old_eid = mctp_get_bus_eid(core_binding);
-    bool is_old_assigned = mctp_is_bus_eid_assigned(core_binding);
-
-    mctp_set_bus_eid(core_binding, sender, false);
+    mctp_binding_t* core_binding = (mctp_binding_t*)args;
 
     mctp_message_tx(
-        mctp_inst,
+        core_binding,
         receiver,
         tag_owner,
         message_tag,
         message,
         message_len
     );
-
-    mctp_set_bus_eid(core_binding, old_eid, is_old_assigned);
 }
 
-void mctp_ctrl_message_rx_callback(
-    mctp_inst_t* mctp_inst,
-    mctp_binding_t* core_binding,
-    mctp_eid_t receiver,
-    mctp_eid_t sender,
-    uint8_t message_tag,
-    bool tag_owner,
-    uint8_t* message,
-    size_t message_len,
-    void* args
-)
-{
-    mctp_ctrl_header_t* ctrl_header = (mctp_ctrl_header_t*)message;
-
-    mctp_dump_transport(receiver, sender, message_tag, tag_owner);
-    mctp_dump_ctrl(ctrl_header);
-
-    switch (ctrl_header->command)
-    {
-        case MCTP_CTRL_CMD_SET_ENDPOINT_ID:
-        {
-            if(tag_owner && ctrl_header->request)
-            {
-                handle_req_set_endpoint_id(
-                    mctp_inst,
-                    core_binding,
-                    sender,
-                    message_tag,
-                    ctrl_header,
-                    message_len
-                );
-            }
-        }
-
-        case MCTP_CTRL_CMD_GET_ENDPOINT_ID:
-        {
-            if(tag_owner && ctrl_header->request)
-            {
-                handle_req_get_endpoint_id(
-                    mctp_inst,
-                    core_binding,
-                    sender,
-                    message_tag,
-                    ctrl_header,
-                    message_len
-                );
-            }
-        }
-        break;
-
-        case MCTP_CTRL_CMD_GET_ENDPOINT_UUID:
-        {
-            if(tag_owner && ctrl_header->request)
-            {
-                handle_req_get_endpoint_uuid(
-                    mctp_inst,
-                    core_binding,
-                    sender,
-                    message_tag,
-                    ctrl_header,
-                    message_len
-                );
-            }
-        }
-        break;
-
-        case MCTP_CTRL_CMD_GET_VERSION_SUPPORT:
-        {
-            if(tag_owner && ctrl_header->request)
-            {
-                handle_req_get_mctp_ver(
-                    mctp_inst,
-                    core_binding,
-                    sender,
-                    message_tag,
-                    ctrl_header,
-                    message_len
-                );
-            }
-        }
-        break;
-
-        case MCTP_CTRL_CMD_GET_MESSAGE_TYPE_SUPPORT:
-        {
-            if(tag_owner && ctrl_header->request)
-            {
-                handle_req_get_msg_type(
-                    mctp_inst,
-                    core_binding,
-                    sender,
-                    message_tag,
-                    ctrl_header,
-                    message_len
-                );
-            }   
-        }
-        break;
-
-        default:
-        {
-            handle_error(
-                mctp_inst,
-                core_binding,
-                sender,
-                message_tag,
-                ctrl_header,
-                MCTP_CTRL_CC_MSG_TYPE_NOT_SUPPORTED
-            );
-        };
-        break;
-    }
-}
 
 void mctp_pldm_message_rx_callback(
     mctp_inst_t* mctp_inst,
@@ -278,58 +139,20 @@ void mctp_pldm_message_rx_callback(
 )
 {   
     mctp_dump_transport(receiver, sender, message_tag, tag_owner);
-
-    pldm_inst_t* pldm_inst = (pldm_inst_t*)pldm_inst;
-
     
-/*
-    if(mctp_get_bus_eid(receiver) == MCTP_EID_NULL)
-    {
+    pldm_mctp_transport_t* mctp_transport = (pldm_mctp_transport_t*)args;
 
-    }
-*/
-
-    
-
-    
-    // pldm_mctp_message_rx(
-    //     mctp_transport,
-    //     sender,
-    //     message_tag,
-    //     tag_owner,
-    //     message,
-    //     message_len
-    // );
+    pldm_mctp_message_rx(
+        mctp_transport,
+        receiver,
+        sender,
+        message_tag,
+        tag_owner,
+        message,
+        message_len
+    );
 }
 
-void mctp_dump_transport(
-    mctp_eid_t receiver,
-    mctp_eid_t sender,
-    uint8_t message_tag,
-    bool tag_owner
-)
-{
-    printf("Transport info\n");
-    printf("Sender: 0x%02X\n", sender);
-    printf("Receiver: 0x%02X\n", receiver);
-    printf("Tag owner: %s\n", tag_owner ? "YES" : "NO");
-    printf("Message tag: %d\n", message_tag);
-    printf("\n");
-}
-
-void mctp_dump_ctrl(
-    mctp_ctrl_header_t* ctrl_header
-)
-{
-    printf("Control info\n");
-    printf("Type: ctrl[%02X]\n", ctrl_header->base.type);
-    printf("Integrity check: %s\n", ctrl_header->base.integrity_check ? "YES" : "NO");
-    printf("Command: 0x%02X\n", ctrl_header->command);
-    printf("Datagram: %s\n", ctrl_header->datagram ? "YES" : "NO");
-    printf("Request: %s\n", ctrl_header->request ? "YES" : "NO");
-    printf("Instance: %d\n", ctrl_header->instance);
-    printf("\n");
-}
 
 int main() 
 {   
@@ -349,16 +172,17 @@ int main()
     pldm_transport_t* core_transport = pldm_mctp_get_core_transport(mctp_transport);
 
 
-
-    mctp_serial_set_raw_tx_callback(serial_binding, mctp_uart_raw_tx_callback, NULL);
-    mctp_set_ctrl_message_rx_callback(mctp_inst, mctp_ctrl_message_rx_callback, NULL);
     mctp_register_bus(mctp_inst, core_binding);
+    mctp_serial_set_raw_tx_callback(serial_binding, mctp_uart_raw_tx_callback, NULL);
+    mctp_set_ctrl_message_rx_callback(mctp_inst, mctp_ctrl_message_rx_callback, NULL);    
+    mctp_set_pldm_message_rx_callback(mctp_inst, mctp_pldm_message_rx_callback, mctp_transport);
 
-    mctp_set_pldm_message_rx_callback(mctp_inst, mctp_pldm_message_rx_callback, NULL);
     pldm_register_terminus(pldm_inst, core_transport);
+    pldm_mctp_set_message_tx_callback(mctp_transport, pldm_mctp_message_tx_callback, core_binding);    
+    pldm_set_base_message_rx_callback(pldm_inst, pldm_base_message_rx_callback, NULL);
+    pldm_set_platform_message_rx_callback(pldm_inst, pldm_platform_message_rx_callback, NULL);
+
     
-
-
     while (true)
     {
         if(uart_is_readable(uart_id))

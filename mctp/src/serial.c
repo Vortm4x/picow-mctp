@@ -7,7 +7,6 @@
 #include <string.h>
 
 
-
 typedef enum mctp_serial_rx_state_t
 {
     MCTP_SERIAL_RX_STATE_WAIT_SYNC_START,
@@ -250,7 +249,6 @@ void mctp_serial_packet_tx(
     crc = crc16_calc_block(crc, (uint8_t*)mctp_packet_buffer_header(packet), serial_header->byte_count);
     serial_trailer->fcs_high = ((uint8_t)(crc >> 8));
     serial_trailer->fcs_low = ((uint8_t)(crc >> 0));
-
 
 
     serial_trailer->framing_flag = MCTP_SERIAL_FRAME_FLAG;

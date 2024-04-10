@@ -1,5 +1,6 @@
 #include <pico/platform.h>
 #include <mctp/mctp.h>
+#include <mctp/control.h>
 #include <packet_buffer.h>
 #include <message_ctx.h>
 #include <private_core.h>
@@ -194,7 +195,7 @@ void mctp_set_pldm_message_rx_callback(
 }
 
 void mctp_message_tx(
-    mctp_inst_t* mctp_inst, 
+    mctp_binding_t* binding, 
     mctp_eid_t destination,
     bool tag_owner,
 	uint8_t message_tag, 
@@ -202,13 +203,13 @@ void mctp_message_tx(
     size_t message_len
 )
 {
-    if(mctp_inst->bus == NULL)
+    if(binding->bus == NULL)
     {
         return;
     }
 
     mctp_message_disassemble(
-        mctp_inst->bus, 
+        binding->bus, 
         destination, 
         tag_owner, 
         message_tag, 
@@ -216,7 +217,7 @@ void mctp_message_tx(
         message_len
     );
 
-    mctp_packet_queue_tx(mctp_inst->bus);
+    mctp_packet_queue_tx(binding->bus);
 }
 
 void mctp_message_disassemble(

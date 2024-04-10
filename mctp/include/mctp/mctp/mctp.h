@@ -147,8 +147,8 @@ void mctp_set_pldm_message_rx_callback(
 );
 
 void mctp_message_tx(
-    mctp_inst_t* mctp_inst, 
-    mctp_eid_t destination, 
+    mctp_binding_t* binding, 
+    mctp_eid_t destination,
     bool tag_owner,
 	uint8_t message_tag, 
     uint8_t* message, 
