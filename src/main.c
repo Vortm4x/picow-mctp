@@ -1,14 +1,21 @@
 #include <stdio.h>
 #include <ctype.h>
+
 #include <pico/stdlib.h>
 #include <pico/cyw43_arch.h>
+#include <pico/time.h>
 #include <hardware/uart.h>
+
 #include <mctp/mctp.h>
 #include <mctp/serial.h>
 #include <mctp/control.h>
+
 #include <pldm/pldm.h>
 #include <pldm/base.h>
 #include <pldm/mctp_transport.h>
+#include <pldm/pdr/repo.h>
+#include <pldm/pdr/term_loc.h>
+
 #include "dump.h"
 #include "control_handler.h"
 #include "pldm_base_handler.h"
@@ -26,7 +33,6 @@
 
 #define MCTP_BUS_OWNER_EID 0x08
 #define MCTP_LOCAL_EID 0xC8
-
 
 bool init_all();
 
@@ -54,6 +60,23 @@ void pldm_mctp_message_tx_callback(
     bool tag_owner,
     uint8_t* message,
     size_t message_len,
+    void* args
+);
+
+uint16_t pdr_gen_record_change();
+
+pldm_pdr_header_t* pdr_create_mctp_term_loc(
+    pldm_transport_t* core_transport,
+    mctp_binding_t* core_binding
+);
+
+void mctp_bus_eid_changed_callback(
+    mctp_binding_t* core_binding,
+    void* args
+); 
+
+void pldm_tid_changed_callback(
+    pldm_transport_t* transport,
     void* args
 );
 
@@ -104,28 +127,6 @@ void mctp_uart_raw_tx_callback(
 }
 
 
-void pldm_mctp_message_tx_callback(
-    uint8_t receiver,
-    uint8_t message_tag,
-    bool tag_owner,
-    uint8_t* message,
-    size_t message_len,
-    void* args
-)
-{
-    mctp_binding_t* core_binding = (mctp_binding_t*)args;
-
-    mctp_message_tx(
-        core_binding,
-        receiver,
-        tag_owner,
-        message_tag,
-        message,
-        message_len
-    );
-}
-
-
 void mctp_pldm_message_rx_callback(
     mctp_inst_t* mctp_inst,
     mctp_binding_t* core_binding,
@@ -154,6 +155,115 @@ void mctp_pldm_message_rx_callback(
 }
 
 
+void pldm_mctp_message_tx_callback(
+    uint8_t receiver,
+    uint8_t message_tag,
+    bool tag_owner,
+    uint8_t* message,
+    size_t message_len,
+    void* args
+)
+{
+    mctp_binding_t* core_binding = (mctp_binding_t*)args;
+
+    mctp_message_tx(
+        core_binding,
+        receiver,
+        tag_owner,
+        message_tag,
+        message,
+        message_len
+    );
+}
+
+
+uint16_t pdr_gen_record_change()
+{
+    uint16_t sec_since_boot = time_us_64() / 1000000;
+    return sec_since_boot;
+}
+
+
+pldm_pdr_header_t* pdr_create_mctp_term_loc(
+    pldm_transport_t* core_transport,
+    mctp_binding_t* core_binding
+)
+{
+    uint8_t locator_len = sizeof(pldm_term_loc_mctp_t);
+    uint16_t pdr_data_len = sizeof(pldm_pdr_term_locator_t) + locator_len;
+    uint8_t pdr_data[pdr_data_len];
+
+    pldm_pdr_term_locator_t* pdr = (pldm_pdr_term_locator_t*)(&pdr_data[0]);
+    pldm_term_loc_mctp_t* mctp_loc = (pldm_term_loc_mctp_t*)(pdr->locator_data);
+
+    memset(pdr_data, 0, pdr_data_len);
+
+    pdr->is_valid = true;
+    pdr->locator_type = PLDM_LOCATOR_TYPE_MCTP;
+    pdr->locator_len = locator_len;
+    pdr->container_id = 0;
+    pdr->terminus_handle = 0;
+    pdr->terminus_id = pldm_get_terminus_id(core_transport);
+    mctp_loc->mctp_eid = mctp_get_bus_eid(core_binding);
+
+    return pldm_pdr_create_record(
+        PLDM_PDR_TYPE_TERM_LOCATOR,
+        pdr_gen_record_change(),
+        pdr_data,
+        pdr_data_len
+    );
+};
+
+
+void mctp_bus_eid_changed_callback(
+    mctp_binding_t* core_binding,
+    void* args
+)
+{
+    pldm_pdr_repo_handle_t* term_loc_hanlde = (pldm_pdr_repo_handle_t*) args;
+
+    pldm_pdr_header_t* term_loc_pdr = pldm_pdr_repo_get_entry(
+        term_loc_hanlde->pdr_repo,
+        term_loc_hanlde->record_handle
+    );
+
+    if(term_loc_pdr == NULL)
+    {
+        return;
+    }
+
+    pldm_pdr_term_locator_t* term_loc = (pldm_pdr_term_locator_t*)term_loc_pdr->data;
+    pldm_term_loc_mctp_t* mctp_loc = (pldm_term_loc_mctp_t*)term_loc->locator_data;
+
+    mctp_loc->mctp_eid = mctp_get_bus_eid(core_binding);
+    term_loc_pdr->record_change = pdr_gen_record_change();
+}
+
+
+void pldm_tid_changed_callback(
+    pldm_transport_t* transport,
+    void* args
+)
+{
+    pldm_pdr_repo_handle_t* term_loc_hanlde = (pldm_pdr_repo_handle_t*) args;
+
+    pldm_pdr_header_t* term_loc_pdr = pldm_pdr_repo_get_entry(
+        term_loc_hanlde->pdr_repo,
+        term_loc_hanlde->record_handle
+    );
+
+    if(term_loc_pdr == NULL)
+    {
+        return;
+    }
+
+    pldm_pdr_term_locator_t* term_loc = (pldm_pdr_term_locator_t*)term_loc_pdr->data;
+
+    term_loc->terminus_id = pldm_get_terminus_id(transport);
+    term_loc_pdr->record_change = pdr_gen_record_change();
+}
+
+
 int main() 
 {   
     if(!init_all())
@@ -171,6 +281,7 @@ int main()
     pldm_mctp_transport_t* mctp_transport = pldm_mctp_init();
     pldm_transport_t* core_transport = pldm_mctp_get_core_transport(mctp_transport);
 
+    pldm_pdr_repo_t* pdr_repo = pldm_pdr_repo_init();
 
     mctp_register_bus(mctp_inst, core_binding);
     mctp_serial_set_raw_tx_callback(serial_binding, mctp_uart_raw_tx_callback, NULL);
@@ -182,7 +293,23 @@ int main()
     pldm_set_base_message_rx_callback(pldm_inst, pldm_base_message_rx_callback, NULL);
     pldm_set_platform_message_rx_callback(pldm_inst, pldm_platform_message_rx_callback, NULL);
 
-    
+
+    pldm_pdr_header_t* term_loc_record = pdr_create_mctp_term_loc(
+        core_transport, 
+        core_binding
+    );
+    uint32_t term_loc_handle_number = pldm_pdr_repo_add_entry(
+        pdr_repo, 
+        term_loc_record
+    );
+    pldm_pdr_repo_handle_t* term_loc_hanlde = pldm_pdr_repo_create_handle(
+        pdr_repo,
+        term_loc_handle_number
+    );
+
+    mctp_set_bus_eid_changed_callback(core_binding, mctp_bus_eid_changed_callback, term_loc_hanlde);
+    pldm_set_terminus_id_changed_callback(core_transport, pldm_tid_changed_callback, term_loc_hanlde);
+
     while (true)
     {
         if(uart_is_readable(uart_id))
@@ -190,6 +317,9 @@ int main()
             mctp_serial_byte_rx(serial_binding, uart_getc(uart_id));
         }
     }
+
+    pldm_pdr_repo_desroy_handle(term_loc_hanlde);
+    pldm_pdr_repo_destroy(pdr_repo);
 
     pldm_mctp_destroy(mctp_transport);
     pldm_destroy(pldm_inst);

@@ -98,6 +98,10 @@ typedef void (*mctp_message_rx_t)(
     void* args
 );
 
+typedef void (*mctp_bus_eid_changed_t)(
+    mctp_binding_t *core_binding,
+    void* args
+);
 
 mctp_inst_t* mctp_init();
 
@@ -127,6 +131,12 @@ mctp_eid_t mctp_get_bus_eid(
 
 bool mctp_is_bus_eid_assigned(
     mctp_binding_t *binding
+);
+
+void mctp_set_bus_eid_changed_callback(
+    mctp_binding_t* binding,
+    mctp_bus_eid_changed_t bus_eid_changed_callback,
+    void* bus_eid_changed_args
 );
 
 void mctp_get_uuid(

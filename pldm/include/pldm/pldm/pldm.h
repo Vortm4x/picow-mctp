@@ -206,6 +206,11 @@ typedef void (*pldm_message_rx_t)(
     void* args
 );
 
+typedef void (*pldm_tid_changed_t)(
+    pldm_transport_t* transport,
+    void* args
+);
+
 pldm_inst_t* pldm_init();
 
 void pldm_destroy(
@@ -224,6 +229,17 @@ void pldm_unregister_terminus(
 
 pldm_tid_t pldm_get_terminus_id(
     pldm_transport_t* transport
+);
+
+void pldm_set_terminus_id(
+    pldm_transport_t* transport,
+    pldm_tid_t tid
+);
+
+void pldm_set_terminus_id_changed_callback(
+    pldm_transport_t* transport,
+    pldm_tid_changed_t pldm_tid_changed_callback,
+    void* pldm_tid_changed_args
 );
 
 void pldm_set_base_message_rx_callback(

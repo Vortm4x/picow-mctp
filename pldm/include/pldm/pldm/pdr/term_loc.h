@@ -57,7 +57,6 @@ pldm_term_loc_software_t;
 
 typedef struct __attribute__ ((__packed__)) pldm_pdr_term_locator_t
 {
-    pldm_pdr_header_t header;
     uint16_t terminus_handle;
     bool is_valid   : 1;
     uint8_t         : 7;

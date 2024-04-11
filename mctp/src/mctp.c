@@ -117,10 +117,20 @@ void mctp_set_bus_eid(
 {
     if(binding != NULL)
     {
-        if(binding->bus != NULL)
+        mctp_bus_t* bus = bus->eid;
+
+        if(bus != NULL)
         {
-            binding->bus->eid = eid;
-            binding->bus->is_eid_assigned = is_assigned && (eid != MCTP_EID_NULL);
+            bus->eid = eid;
+            bus->is_eid_assigned = is_assigned && (eid != MCTP_EID_NULL);
+
+            if(bus->eid != eid)
+            {
+                bus->bus_eid_changed_callback(
+                    binding,
+                    bus->bus_eid_changed_args
+                );
+            }
         }
     }
 }
@@ -157,6 +167,21 @@ bool mctp_is_bus_eid_assigned(
     }
 
     return binding->bus->is_eid_assigned;
+}
+
+void mctp_set_bus_eid_changed_callback(
+    mctp_binding_t* binding,
+    mctp_bus_eid_changed_t bus_eid_changed_callback,
+    void* bus_eid_changed_args
+)
+{
+    mctp_bus_t* bus = binding->bus;
+
+    if(bus != NULL)
+    {
+        bus->bus_eid_changed_callback = bus_eid_changed_callback;
+        bus->bus_eid_changed_args = bus_eid_changed_args;
+    }
 }
 
 void mctp_get_uuid(

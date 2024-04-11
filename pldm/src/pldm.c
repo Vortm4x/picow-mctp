@@ -71,6 +71,46 @@ pldm_tid_t pldm_get_terminus_id(
     return transport->endpoint->tid;
 }
 
+void pldm_set_terminus_id(
+    pldm_transport_t* transport,
+    pldm_tid_t tid
+)
+{
+    if(transport != NULL)
+    {
+        pldm_terminus_t* endpoint = transport->endpoint;
+
+        if(endpoint != NULL)
+        {
+            endpoint->tid = tid;
+
+            if(endpoint->tid != tid)
+            {
+                endpoint->pldm_tid_changed_callback(
+                    transport,
+                    endpoint->pldm_tid_changed_args
+                );
+            }
+        }
+    }
+}
+
+void pldm_set_terminus_id_changed_callback(
+    pldm_transport_t* transport,
+    pldm_tid_changed_t pldm_tid_changed_callback,
+    void* pldm_tid_changed_args
+)
+{
+    pldm_terminus_t* endpoint = transport->endpoint;
+
+    if(endpoint != NULL)
+    {
+        endpoint->pldm_tid_changed_callback = pldm_tid_changed_callback;
+        endpoint->pldm_tid_changed_args = pldm_tid_changed_args;
+    }
+}
+
+
 void pldm_set_base_message_rx_callback(
     pldm_inst_t* pldm_inst,
     pldm_message_rx_t base_message_rx,

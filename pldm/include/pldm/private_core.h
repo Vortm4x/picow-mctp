@@ -37,6 +37,8 @@ typedef struct pldm_terminus_t
     pldm_transport_t* transport;
     pldm_inst_t* pldm_inst;
     pldm_tid_t tid;
+    pldm_tid_changed_t pldm_tid_changed_callback;
+    void* pldm_tid_changed_args;
 }
 pldm_terminus_t;
 

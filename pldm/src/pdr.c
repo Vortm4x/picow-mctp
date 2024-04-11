@@ -1,6 +1,42 @@
 #include <pldm/pdr/pdr.h>
 #include <pldm/pdr/num_sens.h>
 #include <pldm/pdr/redfish_resource.h>
+#include <stdlib.h>
+#include <string.h>
+
+
+pldm_pdr_header_t* pldm_pdr_create_record(
+    pldm_pdr_type_t pdr_type,
+    uint16_t record_change,
+    uint8_t data[],
+    uint16_t data_len
+)
+{
+    size_t record_size = sizeof(pldm_pdr_header_t) + data_len;
+    pldm_pdr_header_t* new_record = malloc(record_size);
+
+    if(new_record != NULL)
+    {
+        memset(new_record, 0, record_size);
+
+        new_record->version = PLDM_PDR_HEADER_VER;
+        new_record->pdr_type = pdr_type;
+        new_record->record_change = record_change;
+        new_record->data_len = data_len;
+
+        memcpy(new_record->data, data, data_len);
+    }
+
+    return new_record;
+}
+
+
+void pldm_pdr_destroy_record(
+    pldm_pdr_header_t* record
+)
+{
+    free(record);
+}
 
 
 #define pldm_pdr_decl_get_template_struct_len(pldm_template_struct)     \
@@ -35,7 +71,6 @@
 
 pldm_pdr_decl_get_template_struct_len(pldm_pdr_num_sens_data)
 pldm_pdr_decl_get_template_struct_len(pldm_pdr_num_sens_range)
-
 
 uint8_t* pldm_pdr_num_sens_data_ptr(
     pldm_pdr_num_sens_t* pdr

@@ -105,7 +105,6 @@ pldm_pdr_decl_template_struct(pldm_pdr_num_sens_range)
 
 typedef struct __attribute__ ((__packed__)) pldm_pdr_num_sens_t
 {
-    pldm_pdr_header_t header;
     uint16_t terminus_handle;
     uint16_t sensor_id;
     uint16_t entity_type;

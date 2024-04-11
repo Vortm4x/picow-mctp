@@ -24,7 +24,6 @@ pldm_pdr_redfish_res_major_t;
 
 typedef struct __attribute__ ((__packed__)) pldm_pdr_redfish_res_t
 {
-    pldm_pdr_header_t header;
     uint32_t resource_id;
     bool is_device_root         : 1;
     bool is_collection_entry    : 1;
