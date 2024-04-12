@@ -39,6 +39,7 @@ typedef struct pldm_terminus_t
     pldm_tid_t tid;
     pldm_tid_changed_t pldm_tid_changed_callback;
     void* pldm_tid_changed_args;
+    uint32_t next_xfer_handle;
 }
 pldm_terminus_t;
 

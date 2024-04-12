@@ -117,14 +117,16 @@ void mctp_set_bus_eid(
 {
     if(binding != NULL)
     {
-        mctp_bus_t* bus = bus->eid;
+        mctp_bus_t* bus = binding->bus;
 
         if(bus != NULL)
         {
+            bool eid_changed = (bus->eid != eid);
+
             bus->eid = eid;
             bus->is_eid_assigned = is_assigned && (eid != MCTP_EID_NULL);
 
-            if(bus->eid != eid)
+            if(eid_changed)
             {
                 bus->bus_eid_changed_callback(
                     binding,

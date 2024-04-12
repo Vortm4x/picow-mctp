@@ -179,8 +179,11 @@ void pldm_mctp_message_tx_callback(
 
 uint16_t pdr_gen_record_change()
 {
-    uint16_t sec_since_boot = time_us_64() / 1000000;
-    return sec_since_boot;
+    uint16_t ms_since_boot = to_ms_since_boot(
+        get_absolute_time()
+    );
+    
+    return ms_since_boot;
 }
 
 
@@ -220,23 +223,20 @@ void mctp_bus_eid_changed_callback(
     void* args
 )
 {
-    pldm_pdr_repo_handle_t* term_loc_hanlde = (pldm_pdr_repo_handle_t*) args;
+    pldm_pdr_repo_entry_t* term_loc_entry = (pldm_pdr_repo_entry_t*)args;
 
-    pldm_pdr_header_t* term_loc_pdr = pldm_pdr_repo_get_entry(
-        term_loc_hanlde->pdr_repo,
-        term_loc_hanlde->record_handle
-    );
+    pldm_pdr_header_t* term_loc_record = pldm_pdr_repo_entry_get_record(term_loc_entry);
 
-    if(term_loc_pdr == NULL)
+    if(term_loc_record == NULL)
     {
         return;
     }
 
-    pldm_pdr_term_locator_t* term_loc = (pldm_pdr_term_locator_t*)term_loc_pdr->data;
+    pldm_pdr_term_locator_t* term_loc = (pldm_pdr_term_locator_t*)term_loc_record->data;
     pldm_term_loc_mctp_t* mctp_loc = (pldm_term_loc_mctp_t*)term_loc->locator_data;
 
     mctp_loc->mctp_eid = mctp_get_bus_eid(core_binding);
-    term_loc_pdr->record_change = pdr_gen_record_change();
+    term_loc_record->record_change = pdr_gen_record_change();
 }
 
 
@@ -245,22 +245,19 @@ void pldm_tid_changed_callback(
     void* args
 )
 {
-    pldm_pdr_repo_handle_t* term_loc_hanlde = (pldm_pdr_repo_handle_t*) args;
+    pldm_pdr_repo_entry_t* term_loc_entry = (pldm_pdr_repo_entry_t*)args;
 
-    pldm_pdr_header_t* term_loc_pdr = pldm_pdr_repo_get_entry(
-        term_loc_hanlde->pdr_repo,
-        term_loc_hanlde->record_handle
-    );
+    pldm_pdr_header_t* term_loc_record = pldm_pdr_repo_entry_get_record(term_loc_entry);
 
-    if(term_loc_pdr == NULL)
+    if(term_loc_record == NULL)
     {
         return;
     }
 
-    pldm_pdr_term_locator_t* term_loc = (pldm_pdr_term_locator_t*)term_loc_pdr->data;
+    pldm_pdr_term_locator_t* term_loc = (pldm_pdr_term_locator_t*)term_loc_record->data;
 
     term_loc->terminus_id = pldm_get_terminus_id(transport);
-    term_loc_pdr->record_change = pdr_gen_record_change();
+    term_loc_record->record_change = pdr_gen_record_change();
 }
 
 
@@ -291,24 +288,19 @@ int main()
     pldm_register_terminus(pldm_inst, core_transport);
     pldm_mctp_set_message_tx_callback(mctp_transport, pldm_mctp_message_tx_callback, core_binding);    
     pldm_set_base_message_rx_callback(pldm_inst, pldm_base_message_rx_callback, NULL);
-    pldm_set_platform_message_rx_callback(pldm_inst, pldm_platform_message_rx_callback, NULL);
+    pldm_set_platform_message_rx_callback(pldm_inst, pldm_platform_message_rx_callback, pdr_repo);
 
 
-    pldm_pdr_header_t* term_loc_record = pdr_create_mctp_term_loc(
-        core_transport, 
-        core_binding
-    );
-    uint32_t term_loc_handle_number = pldm_pdr_repo_add_entry(
+    pldm_pdr_repo_entry_t* term_loc_entry = pldm_pdr_repo_add_entry(
         pdr_repo, 
-        term_loc_record
-    );
-    pldm_pdr_repo_handle_t* term_loc_hanlde = pldm_pdr_repo_create_handle(
-        pdr_repo,
-        term_loc_handle_number
+        pdr_create_mctp_term_loc(
+            core_transport, 
+            core_binding
+        )
     );
 
-    mctp_set_bus_eid_changed_callback(core_binding, mctp_bus_eid_changed_callback, term_loc_hanlde);
-    pldm_set_terminus_id_changed_callback(core_transport, pldm_tid_changed_callback, term_loc_hanlde);
+    mctp_set_bus_eid_changed_callback(core_binding, mctp_bus_eid_changed_callback, term_loc_entry);
+    pldm_set_terminus_id_changed_callback(core_transport, pldm_tid_changed_callback, term_loc_entry);
 
     while (true)
     {
@@ -318,7 +310,6 @@ int main()
         }
     }
 
-    pldm_pdr_repo_desroy_handle(term_loc_hanlde);
     pldm_pdr_repo_destroy(pdr_repo);
 
     pldm_mctp_destroy(mctp_transport);

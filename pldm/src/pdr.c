@@ -39,6 +39,19 @@ void pldm_pdr_destroy_record(
 }
 
 
+uint32_t pldm_pdr_record_len(
+    pldm_pdr_header_t* record
+)
+{
+    if(record == NULL)
+    {
+        return 0;
+    }
+
+    return (sizeof(pldm_pdr_header_t) + record->data_len);
+}
+
+
 #define pldm_pdr_decl_get_template_struct_len(pldm_template_struct)     \
     size_t pldm_template_struct##_struct_len(                           \
         pldm_pdr_data_size_t size                                       \

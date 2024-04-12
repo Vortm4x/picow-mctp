@@ -117,20 +117,15 @@ typedef struct __attribute__ ((__packed__)) pldm_req_pdr_repo_get_t
 }
 pldm_req_pdr_repo_get_t;
 
-typedef struct __attribute__ ((__packed__)) pldm_resp_data_pdr_repo_get_t
-{
-    pldm_xfer_pos_t xfer_pos;
-    uint16_t record_len;
-    uint8_t record_data[];
-}
-pldm_resp_data_pdr_repo_get_t;
-
 typedef struct __attribute__ ((__packed__)) pldm_resp_pdr_repo_get_t
 {
     pldm_base_header_t header;
     pldm_cmd_cc_t completion_code;
     uint32_t next_record_handle;
     uint32_t next_xfer_handle;
+    pldm_xfer_pos_t xfer_pos;
+    uint16_t record_len;
+    uint8_t record_data_part[];
 }
 pldm_resp_pdr_repo_get_t;
 

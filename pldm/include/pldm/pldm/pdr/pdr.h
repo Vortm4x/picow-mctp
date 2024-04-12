@@ -5,7 +5,9 @@
 #include <stdint.h>
 
 
-#define PLDM_PDR_HANDLE_RESERVED 0x00000000
+#define PLDM_PDR_NULL_HANDLE 0x00000000
+#define PLDM_PDR_NULL_RECORD_CHANGE 0x0000
+
 #define PLDM_PDR_HEADER_VER 0x01
 
 
@@ -198,6 +200,10 @@ pldm_pdr_header_t* pldm_pdr_create_record(
 );
 
 void pldm_pdr_destroy_record(
+    pldm_pdr_header_t* record
+);
+
+uint32_t pldm_pdr_record_len(
     pldm_pdr_header_t* record
 );
 

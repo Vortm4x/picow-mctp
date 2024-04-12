@@ -82,9 +82,11 @@ void pldm_set_terminus_id(
 
         if(endpoint != NULL)
         {
+            bool tid_changed = (endpoint->tid != tid);
+
             endpoint->tid = tid;
 
-            if(endpoint->tid != tid)
+            if(tid_changed)
             {
                 endpoint->pldm_tid_changed_callback(
                     transport,
