@@ -15,11 +15,13 @@
 #include <pldm/mctp_transport.h>
 #include <pldm/pdr/repo.h>
 #include <pldm/pdr/term_loc.h>
+#include <pldm/pdr/num_sens.h>
 
 #include "dump.h"
 #include "control_handler.h"
 #include "pldm_base_handler.h"
 #include "pldm_platform_handler.h"
+#include "dht11/driver.h"
 
 
 #define UART_INDEX 1
@@ -30,6 +32,8 @@
 #define UART_DATA_BITS 8
 #define UART_STOP_BITS 1
 #define UART_PARITY UART_PARITY_NONE
+
+#define DHT11_PIN 15
 
 #define MCTP_BUS_OWNER_EID 0x08
 #define MCTP_LOCAL_EID 0xC8
@@ -68,6 +72,20 @@ uint16_t pdr_gen_record_change();
 pldm_pdr_header_t* pdr_create_mctp_term_loc(
     pldm_transport_t* core_transport,
     mctp_binding_t* core_binding
+);
+
+pldm_pdr_header_t* pdr_create_dht11_humidity_sens();
+
+pldm_pdr_header_t* pdr_create_dht11_temperature_sens();
+
+void dht11_humidity_sens_read(
+    uint8_t data[],
+    size_t data_len
+);
+
+void dht11_temperature_sens_read(
+    uint8_t data[],
+    size_t data_len
 );
 
 void mctp_bus_eid_changed_callback(
@@ -110,6 +128,8 @@ bool init_all()
     // irq_set_exclusive_handler(UART_IRQ, uart_isr);
     // irq_set_enabled(UART_IRQ, true);    
     // uart_set_irq_enables(uart_id, true, false);
+
+    gpio_init(DHT11_PIN);
 
     return true;
 }
@@ -182,7 +202,7 @@ uint16_t pdr_gen_record_change()
     uint16_t ms_since_boot = to_ms_since_boot(
         get_absolute_time()
     );
-    
+
     return ms_since_boot;
 }
 
@@ -216,6 +236,177 @@ pldm_pdr_header_t* pdr_create_mctp_term_loc(
         pdr_data_len
     );
 };
+
+
+pldm_pdr_header_t* pdr_create_dht11_humidity_sens()
+{
+    uint16_t sens_data_len = sizeof(pldm_pdr_num_sens_data_type(uint8_t));
+    uint16_t sens_range_len = sizeof(pldm_pdr_num_sens_range_type(uint8_t));
+
+    uint16_t pdr_data_len = sizeof(pldm_pdr_num_sens_t) + sens_data_len + sens_range_len;
+    uint8_t pdr_data[pdr_data_len];
+
+    pldm_pdr_num_sens_t* nums_sens = (pldm_pdr_num_sens_t*)&pdr_data[0];
+    pldm_pdr_num_sens_data_type(uint8_t)* num_sens_data = (pldm_pdr_num_sens_data_type(uint8_t)*)(pdr_data + 1);
+    pldm_pdr_num_sens_range_type(uint8_t)* num_sens_range = (pldm_pdr_num_sens_range_type(uint8_t)*)(num_sens_data + 1);
+
+    memset(pdr_data, 0, pdr_data_len);
+
+    nums_sens->terminus_handle = 0;
+    nums_sens->entity_type = 0;
+    nums_sens->entity_inst = 0;
+    nums_sens->container_id = 0;
+    nums_sens->sensor_init = PLDM_PDR_INIT_NO_INIT;
+    nums_sens->aux_names = false;
+    nums_sens->base_unit.measure = PLDM_NUM_MEASURE_UNIT_PERCENTAGE;
+    nums_sens->base_unit.modifier = 0;
+    nums_sens->base_unit.rate = PLDM_NUM_RATE_UNIT_NONE;
+    nums_sens->base_oem_unit_handle = 0;
+    nums_sens->aux_unit.measure = PLDM_NUM_MEASURE_UNIT_NONE;
+    nums_sens->aux_unit.modifier = 0;
+    nums_sens->aux_unit.rate = PLDM_NUM_RATE_UNIT_NONE;
+    nums_sens->unit_rel = PLDM_SENSOR_UNIT_REL_MUL_BY;
+    nums_sens->aux_oem_unit_handle = 0;
+    nums_sens->is_linear = true;
+
+    num_sens_data->data_size = PLDM_PDR_DATA_SIZE_UNSIGNED_INT8;
+    num_sens_data->resolution.exponent = 0;
+    num_sens_data->resolution.mantissa = 1;
+    num_sens_data->resolution.sign = false;
+    num_sens_data->offset.exponent = 0;
+    num_sens_data->offset.mantissa = 0;
+    num_sens_data->resolution.sign = false;
+    num_sens_data->accuracy = 500;
+    num_sens_data->plus_tolerance = 5;
+    num_sens_data->minus_tolerance = 5;
+    num_sens_data->hysteresis = 1;
+    num_sens_data->state_transition_interval.exponent = 0;
+    num_sens_data->state_transition_interval.mantissa = 0;
+    num_sens_data->state_transition_interval.sign = false;
+    num_sens_data->update_interval.exponent = 0;
+    num_sens_data->update_interval.mantissa = 30;
+    num_sens_data->update_interval.sign = false;
+    num_sens_data->min_readable = 20;
+    num_sens_data->max_readable = 90;
+
+    num_sens_range->range_size = PLDM_PDR_DATA_SIZE_UNSIGNED_INT8;
+    num_sens_range->range_support.normal_max = true;
+    num_sens_range->range_support.normal_min = true;
+    num_sens_range->normal_max = 90;
+    num_sens_range->normal_min = 20;
+
+    return  pldm_pdr_create_record(
+        PLDM_PDR_TYPE_NUM_SENS,
+        pdr_gen_record_change(),
+        pdr_data,
+        pdr_data_len
+    );
+}
+
+pldm_pdr_header_t* pdr_create_dht11_temperature_sens()
+{
+    uint16_t sens_data_len = sizeof(pldm_pdr_num_sens_data_type(uint8_t));
+    uint16_t sens_range_len = sizeof(pldm_pdr_num_sens_range_type(uint8_t));
+
+    uint16_t pdr_data_len = sizeof(pldm_pdr_num_sens_t) + sens_data_len + sens_range_len;
+    uint8_t pdr_data[pdr_data_len];
+
+    pldm_pdr_num_sens_t* nums_sens = (pldm_pdr_num_sens_t*)&pdr_data[0];
+    pldm_pdr_num_sens_data_type(uint8_t)* num_sens_data = (pldm_pdr_num_sens_data_type(uint8_t)*)(pdr_data + 1);
+    pldm_pdr_num_sens_range_type(uint8_t)* num_sens_range = (pldm_pdr_num_sens_range_type(uint8_t)*)(num_sens_data + 1);
+
+    memset(pdr_data, 0, pdr_data_len);
+
+    nums_sens->terminus_handle = 0;
+    nums_sens->entity_type = 0;
+    nums_sens->entity_inst = 0;
+    nums_sens->container_id = 0;
+    nums_sens->sensor_init = PLDM_PDR_INIT_NO_INIT;
+    nums_sens->aux_names = false;
+    nums_sens->base_unit.measure = PLDM_NUM_MEASURE_UNIT_DEG_C;
+    nums_sens->base_unit.modifier = 0;
+    nums_sens->base_unit.rate = PLDM_NUM_RATE_UNIT_NONE;
+    nums_sens->base_oem_unit_handle = 0;
+    nums_sens->aux_unit.measure = PLDM_NUM_MEASURE_UNIT_NONE;
+    nums_sens->aux_unit.modifier = 0;
+    nums_sens->aux_unit.rate = PLDM_NUM_RATE_UNIT_NONE;
+    nums_sens->unit_rel = PLDM_SENSOR_UNIT_REL_MUL_BY;
+    nums_sens->aux_oem_unit_handle = 0;
+    nums_sens->is_linear = true;
+
+    num_sens_data->data_size = PLDM_PDR_DATA_SIZE_UNSIGNED_INT8;
+    num_sens_data->resolution.exponent = 0;
+    num_sens_data->resolution.mantissa = 1;
+    num_sens_data->resolution.sign = false;
+    num_sens_data->offset.exponent = 0;
+    num_sens_data->offset.mantissa = 0;
+    num_sens_data->resolution.sign = false;
+    num_sens_data->accuracy = 400;
+    num_sens_data->plus_tolerance = 2;
+    num_sens_data->minus_tolerance = 2;
+    num_sens_data->hysteresis = 0;
+    num_sens_data->state_transition_interval.exponent = 0;
+    num_sens_data->state_transition_interval.mantissa = 0;
+    num_sens_data->state_transition_interval.sign = false;
+    num_sens_data->update_interval.exponent = 0;
+    num_sens_data->update_interval.mantissa = 30;
+    num_sens_data->update_interval.sign = false;
+    num_sens_data->min_readable = 0;
+    num_sens_data->max_readable = 50;
+
+    num_sens_range->range_size = PLDM_PDR_DATA_SIZE_UNSIGNED_INT8;
+    num_sens_range->range_support.normal_max = true;
+    num_sens_range->range_support.normal_min = true;
+    num_sens_range->normal_max = 0;
+    num_sens_range->normal_min = 50;
+
+    return  pldm_pdr_create_record(
+        PLDM_PDR_TYPE_NUM_SENS,
+        pdr_gen_record_change(),
+        pdr_data,
+        pdr_data_len
+    );
+}
+
+
+void dht11_humidity_sens_read(
+    uint8_t data[],
+    size_t data_len
+)
+{
+    if(data_len != sizeof(uint8_t))
+    {
+        return;
+    }
+
+    dht11_request_data(DHT11_PIN);
+
+    sleep_ms(300);
+
+    dht11_data_t* sensor_data = dht11_sensor_data();
+
+    memcpy(data, &sensor_data->integral_RH, data_len);
+}
+
+
+void dht11_temperature_sens_read(
+    uint8_t data[],
+    size_t data_len
+)
+{
+    if(data_len != sizeof(uint8_t))
+    {
+        return;
+    }
+
+    dht11_request_data(DHT11_PIN);
+
+    sleep_ms(300);
+
+    dht11_data_t* sensor_data = dht11_sensor_data();
+
+    memcpy(data, &sensor_data->integral_T, data_len);
+}
 
 
 void mctp_bus_eid_changed_callback(
@@ -291,16 +482,49 @@ int main()
     pldm_set_platform_message_rx_callback(pldm_inst, pldm_platform_message_rx_callback, pdr_repo);
 
 
-    pldm_pdr_repo_entry_t* term_loc_entry = pldm_pdr_repo_add_entry(
+    pldm_pdr_repo_entry_t* mctp_term_loc = pldm_pdr_repo_add_entry(
         pdr_repo, 
         pdr_create_mctp_term_loc(
             core_transport, 
             core_binding
         )
     );
+    
+    mctp_set_bus_eid_changed_callback(core_binding, mctp_bus_eid_changed_callback, mctp_term_loc);
+    pldm_set_terminus_id_changed_callback(core_transport, pldm_tid_changed_callback, mctp_term_loc);
 
-    mctp_set_bus_eid_changed_callback(core_binding, mctp_bus_eid_changed_callback, term_loc_entry);
-    pldm_set_terminus_id_changed_callback(core_transport, pldm_tid_changed_callback, term_loc_entry);
+
+    pldm_pdr_num_sens_t* dht11_hum_sens = (pldm_pdr_num_sens_t*)pldm_pdr_repo_entry_get_record(
+        pldm_pdr_repo_add_entry(
+            pdr_repo, 
+            pdr_create_dht11_humidity_sens()
+        )
+    )->data;
+
+    pldm_pdr_repo_sensor_set_read_callback(
+        pldm_pdr_repo_get_sensor(
+            pdr_repo, 
+            dht11_hum_sens->sensor_id
+        ),
+        dht11_humidity_sens_read
+    );
+
+
+    pldm_pdr_num_sens_t* dht11_temp_sens = (pldm_pdr_num_sens_t*)pldm_pdr_repo_entry_get_record(
+        pldm_pdr_repo_add_entry(
+            pdr_repo, 
+            pdr_create_dht11_temperature_sens()
+        )
+    )->data;
+
+    pldm_pdr_repo_sensor_set_read_callback(
+        pldm_pdr_repo_get_sensor(
+            pdr_repo, 
+            dht11_temp_sens->sensor_id
+        ),
+        dht11_temperature_sens_read
+    );
+
 
     while (true)
     {

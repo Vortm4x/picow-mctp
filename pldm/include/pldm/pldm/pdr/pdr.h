@@ -7,6 +7,8 @@
 
 #define PLDM_PDR_NULL_HANDLE 0x00000000
 #define PLDM_PDR_NULL_RECORD_CHANGE 0x0000
+#define PLDM_PDR_NULL_SENSOR_ID 0x0000
+
 
 #define PLDM_PDR_HEADER_VER 0x01
 
@@ -50,6 +52,7 @@ typedef enum __attribute__ ((__packed__)) pldm_pdr_data_size_t
     PLDM_PDR_DATA_SIZE_SIGNED_INT16,
     PLDM_PDR_DATA_SIZE_UNSIGNED_INT32,
     PLDM_PDR_DATA_SIZE_SIGNED_INT32,
+    PLDM_PDR_DATA_SIZE_REAL32,
 }
 pldm_pdr_data_size_t;
 
@@ -171,15 +174,6 @@ typedef enum __attribute__ ((__packed__)) pldm_pdr_init_t
 pldm_pdr_init_t;
 
 
-#define pldm_pdr_decl_template_struct(pldm_template_struct)             \
-    pldm_template_struct(uint8_t);                                      \
-    pldm_template_struct(int8_t);                                       \
-    pldm_template_struct(uint16_t);                                     \
-    pldm_template_struct(int16_t);                                      \
-    pldm_template_struct(uint32_t);                                     \
-    pldm_template_struct(int32_t);
-
-
 typedef struct __attribute__ ((__packed__)) pldm_pdr_header_t
 {
     uint32_t record_handle;
@@ -206,5 +200,10 @@ void pldm_pdr_destroy_record(
 uint32_t pldm_pdr_record_len(
     pldm_pdr_header_t* record
 );
+
+uint32_t pldm_pdr_data_type_size(
+    pldm_pdr_data_size_t data_size
+);
+
 
 #endif // PDR_H

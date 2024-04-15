@@ -19,6 +19,7 @@ add_subdirectory(pldm)
 
 add_executable(${PROJECT_NAME}
     src/main.c
+    src/dht11/driver.c
     src/dump.c
     src/control_handler.c
     src/pldm_base_handler.c

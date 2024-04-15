@@ -57,11 +57,11 @@ typedef struct __attribute__ ((__packed__)) pldm_num_sensor_volatility_t
 pldm_num_sensor_volatility_t;
 
 
-#define pldm_pdr_num_sens_data_type(integral_type) \
-    pldm_pdr_num_sens_data_##integral_type
+#define pldm_pdr_num_sens_data_type(numeric_type) \
+    pldm_pdr_num_sens_data_##numeric_type
 
-#define pldm_pdr_num_sens_data(integral_type)                                               \
-    typedef struct __attribute__ ((__packed__)) pldm_pdr_num_sens_data_type(integral_type)  \
+#define pldm_pdr_num_sens_data(numeric_type)                                                \
+    typedef struct __attribute__ ((__packed__)) pldm_pdr_num_sens_data_type(numeric_type)   \
     {                                                                                       \
         pldm_pdr_data_size_t data_size;                                                     \
         real32_t resolution;                                                                \
@@ -69,38 +69,49 @@ pldm_num_sensor_volatility_t;
         uint16_t accuracy;                                                                  \
         uint8_t plus_tolerance;                                                             \
         uint8_t minus_tolerance;                                                            \
-        integral_type hysteresis;                                                           \
+        numeric_type hysteresis;                                                            \
         pldm_num_sensor_treshold_support_t treshold_support;                                \
         pldm_num_sensor_volatility_t volatility;                                            \
         real32_t state_transition_interval;                                                 \
         real32_t update_interval;                                                           \
-        integral_type max_readable;                                                         \
-        integral_type min_readable;                                                         \
+        numeric_type max_readable;                                                          \
+        numeric_type min_readable;                                                          \
     }                                                                                       \
-    pldm_pdr_num_sens_data_type(integral_type)
+    pldm_pdr_num_sens_data_type(numeric_type)
 
-pldm_pdr_decl_template_struct(pldm_pdr_num_sens_data)
+pldm_pdr_num_sens_data(uint8_t);
+pldm_pdr_num_sens_data(int8_t);
+pldm_pdr_num_sens_data(uint16_t);
+pldm_pdr_num_sens_data(int16_t);
+pldm_pdr_num_sens_data(uint32_t);
+pldm_pdr_num_sens_data(int32_t);
 
 
-#define pldm_pdr_num_sens_range_type(integral_type) \
-    pldm_pdr_num_sens_range_##integral_type
+#define pldm_pdr_num_sens_range_type(numeric_type) \
+    pldm_pdr_num_sens_range_##numeric_type
 
-#define pldm_pdr_num_sens_range(integral_type)                                              \
-    typedef struct __attribute__ ((__packed__)) pldm_pdr_num_sens_range_type(integral_type) \
+#define pldm_pdr_num_sens_range(numeric_type)                                               \
+    typedef struct __attribute__ ((__packed__)) pldm_pdr_num_sens_range_type(numeric_type)  \
     {                                                                                       \
         pldm_pdr_data_size_t range_size;                                                    \
         pldm_num_sensor_range_support_t range_support;                                      \
-        integral_type nominal_value;                                                        \
-        integral_type normal_max;                                                           \
-        integral_type normal_min;                                                           \
-        integral_type crit_high;                                                            \
-        integral_type crit_low;                                                             \
-        integral_type fatal_high;                                                           \
-        integral_type fatal_low;                                                            \
+        numeric_type nominal_value;                                                         \
+        numeric_type normal_max;                                                            \
+        numeric_type normal_min;                                                            \
+        numeric_type crit_high;                                                             \
+        numeric_type crit_low;                                                              \
+        numeric_type fatal_high;                                                            \
+        numeric_type fatal_low;                                                             \
     }                                                                                       \
-    pldm_pdr_num_sens_range_type(integral_type)
+    pldm_pdr_num_sens_range_type(numeric_type)
 
-pldm_pdr_decl_template_struct(pldm_pdr_num_sens_range)
+pldm_pdr_num_sens_range(uint8_t);
+pldm_pdr_num_sens_range(int8_t);
+pldm_pdr_num_sens_range(uint16_t);
+pldm_pdr_num_sens_range(int16_t);
+pldm_pdr_num_sens_range(uint32_t);
+pldm_pdr_num_sens_range(int32_t);
+pldm_pdr_num_sens_range(real32_t);
 
 
 typedef struct __attribute__ ((__packed__)) pldm_pdr_num_sens_t
@@ -120,34 +131,6 @@ typedef struct __attribute__ ((__packed__)) pldm_pdr_num_sens_t
     bool is_linear;
 } 
 pldm_pdr_num_sens_t;
-
-
-
-uint8_t* pldm_pdr_num_sens_data_ptr(
-    pldm_pdr_num_sens_t* pdr
-);
-
-pldm_pdr_data_size_t pldm_pdr_num_sens_data_size(
-    pldm_pdr_num_sens_t* pdr
-);
-
-size_t pldm_pdr_num_sens_data_struct_len(
-    pldm_pdr_data_size_t size
-);
-
-
-uint8_t* pldm_pdr_num_sens_range_ptr(
-    pldm_pdr_num_sens_t* pdr
-);
-
-pldm_pdr_data_size_t pldm_pdr_num_sens_range_size(
-    pldm_pdr_num_sens_t* pdr
-);
-
-size_t pldm_pdr_num_sens_range_struct_len(
-    pldm_pdr_data_size_t size
-);
-
 
 
 

@@ -52,71 +52,44 @@ uint32_t pldm_pdr_record_len(
 }
 
 
-#define pldm_pdr_decl_get_template_struct_len(pldm_template_struct)     \
-    size_t pldm_template_struct##_struct_len(                           \
-        pldm_pdr_data_size_t size                                       \
-    )                                                                   \
-    {                                                                   \
-        switch (size)                                                   \
-        {                                                               \
-            case PLDM_PDR_DATA_SIZE_UNSIGNED_INT8:                      \
-                return sizeof(pldm_template_struct##_type(uint8_t));    \
-                                                                        \
-            case PLDM_PDR_DATA_SIZE_SIGNED_INT8:                        \
-                return sizeof(pldm_template_struct##_type(int8_t));     \
-                                                                        \
-            case PLDM_PDR_DATA_SIZE_UNSIGNED_INT16:                     \
-                return sizeof(pldm_template_struct##_type(uint16_t));   \
-                                                                        \
-            case PLDM_PDR_DATA_SIZE_SIGNED_INT16:                       \
-                return sizeof(pldm_template_struct##_type(int16_t));    \
-                                                                        \
-            case PLDM_PDR_DATA_SIZE_UNSIGNED_INT32:                     \
-                return sizeof(pldm_template_struct##_type(uint32_t));   \
-                                                                        \
-            case PLDM_PDR_DATA_SIZE_SIGNED_INT32:                       \
-                return sizeof(pldm_template_struct##_type(int32_t));    \
-                                                                        \
-            default:                                                    \
-                return 0;                                               \
-        }                                                               \
+uint32_t pldm_pdr_data_type_size(
+    pldm_pdr_data_size_t data_size
+)
+{
+    switch (data_size)
+    {
+        case PLDM_PDR_DATA_SIZE_UNSIGNED_INT8:
+            return sizeof(uint8_t);
+        break;
+
+        case PLDM_PDR_DATA_SIZE_SIGNED_INT8:
+            return sizeof(int8_t);
+        break;
+
+        case PLDM_PDR_DATA_SIZE_UNSIGNED_INT16:
+            return sizeof(uint16_t);
+        break;
+
+        case PLDM_PDR_DATA_SIZE_SIGNED_INT16:
+            return sizeof(int16_t);
+        break;
+
+        case PLDM_PDR_DATA_SIZE_UNSIGNED_INT32:
+            return sizeof(uint16_t);
+        break;
+
+        case PLDM_PDR_DATA_SIZE_SIGNED_INT32:
+            return sizeof(int16_t);
+        break;
+
+        case PLDM_PDR_DATA_SIZE_REAL32:
+            return sizeof(real32_t);
+        break;
+    
+        default:
+            return 0;
+        break;
     }
-
-pldm_pdr_decl_get_template_struct_len(pldm_pdr_num_sens_data)
-pldm_pdr_decl_get_template_struct_len(pldm_pdr_num_sens_range)
-
-uint8_t* pldm_pdr_num_sens_data_ptr(
-    pldm_pdr_num_sens_t* pdr
-)
-{
-    return (uint8_t*)(pdr + 1);
-}
-
-pldm_pdr_data_size_t pldm_pdr_num_sens_data_size(
-    pldm_pdr_num_sens_t* pdr
-)
-{
-    return *(pldm_pdr_data_size_t*)pldm_pdr_num_sens_data_ptr(pdr);
-}
-
-
-uint8_t* pldm_pdr_num_sens_range_ptr(
-    pldm_pdr_num_sens_t* pdr
-)
-{
-    uint8_t* struct_data = pldm_pdr_num_sens_data_ptr(pdr);
-    size_t struct_len = pldm_pdr_num_sens_data_struct_len(
-        pldm_pdr_num_sens_data_size(pdr)
-    );
-
-    return struct_data + struct_len;    
-}
-
-pldm_pdr_data_size_t pldm_pdr_num_sens_range_size(
-    pldm_pdr_num_sens_t* pdr
-)
-{
-    return *(pldm_pdr_data_size_t*)pldm_pdr_num_sens_range_ptr(pdr);
 }
 
 

@@ -159,6 +159,13 @@ void handle_req_get_pldm_ver(
             version_count = 2;
         }
         break;
+    
+        case PLDM_TYPE_PLATFORM:
+        {
+            version_count = 3;
+        }
+        break;
+
     }
 
     if(version_count == 0)
@@ -193,6 +200,14 @@ void handle_req_get_pldm_ver(
         {
             resp->versions[0].version = 0xF1F1FF00;
             resp->versions[1].version = 0xF1F0FF00;
+        }
+        break;
+
+        case PLDM_TYPE_PLATFORM:
+        {
+            resp->versions[0].version = 0xF1F2FF00;
+            resp->versions[1].version = 0xF1F1FF00;
+            resp->versions[2].version = 0xF1F0FF00;
         }
         break;
     }
@@ -235,7 +250,7 @@ void handle_req_get_pldm_type(
         .completion_code = PLDM_CMD_CC_SUCCESS,
         .protocol_support = {
             .base = true,
-            .monitor = false,
+            .monitor = true,
             .redfish = false,
         }
     };
@@ -282,10 +297,14 @@ void handle_req_get_pldm_cmd(
         case PLDM_TYPE_BASE:
         {
             pldm_cmd_support_t cmd_support = {
-                .get_tid = true,
-                .get_pldm_ver = true,
-                .get_pldm_cmd = true,
-                .get_pldm_type = true,
+                .base_get_tid                   = true,
+                .base_get_pldm_version          = true,
+                .base_get_pldm_type             = true,
+                .base_get_pldm_commands         = true,
+                .platform_num_sens_get_reading  = true,
+                .platform_pdr_repo_info         = true,
+                .platform_pdr_repo_get          = true,
+                .platform_pdr_repo_sig          = true,
             };
 
             memcpy(&resp.cmd_support, &cmd_support, sizeof(pldm_cmd_support_t));

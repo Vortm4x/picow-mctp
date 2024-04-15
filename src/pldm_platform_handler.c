@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+
 void pldm_platform_message_rx_callback(
     pldm_inst_t* pldm_inst,
     pldm_transport_t* transport,
@@ -24,6 +25,19 @@ void pldm_platform_message_rx_callback(
 
     switch (base_header->command)
     {
+        case PLDM_PLATFORM_CMD_NUM_SENS_GET_READING:
+        {
+            if(base_header->request)
+            {
+                handle_req_num_sens_get_reading(
+                    transport,
+                    message,
+                    message_len,
+                    args
+                );
+            }
+        }
+        break;
 
         case PLDM_PLATFORM_CMD_PRD_REPO_INFO:
         {
@@ -44,6 +58,20 @@ void pldm_platform_message_rx_callback(
             if(base_header->request)
             {
                 handle_req_pdr_repo_get(
+                    transport,
+                    message,
+                    message_len,
+                    args
+                );
+            }
+        }
+        break;
+
+        case PLDM_PLATFORM_CMD_PRD_REPO_SIG:
+        {
+            if(base_header->request)
+            {
+                handle_req_pdr_repo_sig(
                     transport,
                     message,
                     message_len,
@@ -76,8 +104,75 @@ void handle_req_num_sens_get_reading(
     void* args
 )
 {
+    pldm_base_header_t* base_header = (pldm_base_header_t*)message;    
 
+    if(message_len != sizeof(pldm_req_num_sens_get_reading_t))
+    {
+        return pldm_resp_error_tx(
+            transport,
+            base_header,
+            PLDM_CMD_CC_ERROR_INVALID_LENGTH  
+        );
+    }
+
+    pldm_pdr_repo_t* pdr_repo = (pldm_pdr_repo_t*)args;
+
+    pldm_req_num_sens_get_reading_t* req = (pldm_req_num_sens_get_reading_t*)message;
+
+    pldm_pdr_repo_sens_ref_t* sens_ref = pldm_pdr_repo_get_sensor(
+        pdr_repo,
+        req->sensor_id
+    );
+
+    pldm_pdr_repo_entry_t* entry = pldm_pdr_repo_sensor_get_entry(sens_ref);
+
+    if(sens_ref == NULL)
+    {
+        return pldm_resp_error_tx(
+            transport,
+            base_header,
+            PLDM_CMD_CC_INVALID_SENSOR_ID  
+        );
+    }
+
+    pldm_pdr_header_t* record = pldm_pdr_repo_entry_get_record(entry);
+    pldm_pdr_num_sens_t* num_sens = (pldm_pdr_num_sens_t*)record->data;
+    pldm_pdr_data_size_t data_size = *(pldm_pdr_data_size_t*)(num_sens + 1);
+
+    size_t sens_data_len = pldm_pdr_data_type_size(data_size);
+    uint32_t resp_data_len = sizeof(pldm_resp_num_sens_get_reading_t) + sens_data_len;
+    uint8_t resp_data[resp_data_len];
+    pldm_resp_num_sens_get_reading_t* resp = (pldm_resp_num_sens_get_reading_t*)&resp_data[0];
+
+
+    memset(resp_data, 0, resp_data_len);
+
+    resp->header.version = base_header->version;
+    resp->header.pldm_type = base_header->pldm_type;
+    resp->header.command = base_header->command;
+    resp->header.instance = base_header->instance;
+
+    resp->completion_code = PLDM_CMD_CC_SUCCESS;
+    resp->data_size = data_size;
+    resp->oper_state = PLDM_SENSOR_OPER_STATE_ENABLED;
+    resp->event_msg_enable = PLDM_SENSOR_EVENT_MSG_NO_GEN;
+    resp->present_state = PLDM_SENSOR_STATE_NORMAL;
+    resp->prev_state = PLDM_SENSOR_STATE_UNKNOWN;
+    resp->event_state = PLDM_SENSOR_STATE_UNKNOWN;
+
+    pldm_pdr_repo_sensor_read(
+        sens_ref, 
+        resp->reading_data,
+        sens_data_len
+    );
+
+    pldm_message_tx(
+        transport,
+        resp_data,
+        resp_data_len
+    );
 }
+
 
 void handle_req_pdr_repo_info(
     pldm_transport_t* transport,
@@ -108,8 +203,6 @@ void handle_req_pdr_repo_info(
         },
         .completion_code = PLDM_CMD_CC_SUCCESS,
         .repo_state = PLDM_PDR_REPO_STATE_AVAILABLE,
-        //.upd_time
-        //.oem_upd_time
         .repo_size = pldm_pdr_repo_total_size(pdr_repo),
         .largest_record_size = pldm_pdr_repo_largest_record_size(pdr_repo),
         .xfer_handle_timeout = 0x01
@@ -121,6 +214,7 @@ void handle_req_pdr_repo_info(
         sizeof(pldm_resp_pdr_repo_info_t)
     );
 }
+
 
 void handle_req_pdr_repo_get(
     pldm_transport_t* transport,
@@ -254,6 +348,7 @@ void handle_req_pdr_repo_get(
         resp_data_len
     );
 }
+
 
 void handle_req_pdr_repo_sig(
     pldm_transport_t* transport,

@@ -3,12 +3,20 @@
 
 #include <pldm/pdr/pdr.h>
 
-struct pldm_pdr_repo_entry_t;
-typedef struct pldm_pdr_repo_entry_t pldm_pdr_repo_entry_t;
-
 struct pldm_pdr_repo_t;
 typedef struct pldm_pdr_repo_t pldm_pdr_repo_t;
 
+struct pldm_pdr_repo_entry_t;
+typedef struct pldm_pdr_repo_entry_t pldm_pdr_repo_entry_t;
+
+struct pldm_pdr_repo_sens_ref_t;
+typedef struct pldm_pdr_repo_sens_ref_t pldm_pdr_repo_sens_ref_t;
+
+
+typedef void(*pldm_pdr_sensor_read_t)(
+    uint8_t data[],
+    size_t data_len
+);
 
 pldm_pdr_repo_t* pldm_pdr_repo_init();
 
@@ -68,5 +76,26 @@ pldm_xfer_pos_t pldm_pdr_repo_entry_xfer_upd(
 void pldm_pdr_repo_entry_xfer_reset(
     pldm_pdr_repo_entry_t* repo_entry
 );
+
+pldm_pdr_repo_sens_ref_t* pldm_pdr_repo_get_sensor(
+    pldm_pdr_repo_t* pdr_repo,
+    uint16_t sensor_id
+);
+
+void pldm_pdr_repo_sensor_read(
+    pldm_pdr_repo_sens_ref_t* sens_ref,
+    uint8_t data[],
+    size_t data_len
+);
+
+pldm_pdr_repo_entry_t* pldm_pdr_repo_sensor_get_entry(
+    pldm_pdr_repo_sens_ref_t* sens_ref
+);
+
+void pldm_pdr_repo_sensor_set_read_callback(
+    pldm_pdr_repo_sens_ref_t* sens_ref,
+    pldm_pdr_sensor_read_t sensor_read_callback
+);
+
 
 #endif // REPO_H
