@@ -16,6 +16,7 @@
 #include <pldm/pdr/repo.h>
 #include <pldm/pdr/term_loc.h>
 #include <pldm/pdr/num_sens.h>
+#include <pldm/pdr/redfish_resource.h>
 
 #include "dump.h"
 #include "control_handler.h"
@@ -77,6 +78,22 @@ pldm_pdr_header_t* pdr_create_mctp_term_loc(
 pldm_pdr_header_t* pdr_create_dht11_humidity_sens();
 
 pldm_pdr_header_t* pdr_create_dht11_temperature_sens();
+
+pldm_pdr_header_t* pdr_create_redfish_resource(
+    uint32_t res_id,
+    uint32_t containing_res_id,
+    bool is_collection,
+    bool is_entry,
+    uint8_t prop_containing_res_name_data[],
+    uint16_t prop_containing_res_name_data_len,
+    uint8_t sub_uri_data[],
+    uint16_t sub_uri_data_len,
+    uint8_t schema_name_data[],
+    uint16_t schema_name_data_len,
+    uint32_t schema_version,
+    uint16_t schema_dict_len,
+    uint32_t schema_dict_sig
+);
 
 void dht11_humidity_sens_read(
     uint8_t data[],
@@ -158,7 +175,7 @@ void mctp_pldm_message_rx_callback(
     size_t message_len,
     void* args
 )
-{   
+{
     mctp_dump_transport(receiver, sender, message_tag, tag_owner);
     
     pldm_mctp_transport_t* mctp_transport = (pldm_mctp_transport_t*)args;
@@ -369,6 +386,83 @@ pldm_pdr_header_t* pdr_create_dht11_temperature_sens()
 }
 
 
+pldm_pdr_header_t* pdr_create_redfish_resource(
+    uint32_t res_id,
+    uint32_t containing_res_id,
+    bool is_collection,
+    bool is_entry,
+    uint8_t prop_containing_res_name_data[],
+    uint16_t prop_containing_res_name_data_len,
+    uint8_t sub_uri_data[],
+    uint16_t sub_uri_data_len,
+    uint8_t schema_name_data[],
+    uint16_t schema_name_data_len,
+    uint32_t schema_version,
+    uint16_t schema_dict_len,
+    uint32_t schema_dict_sig
+)
+{
+    uint16_t pdr_data_len = sizeof(pldm_pdr_redfish_res_t) + prop_containing_res_name_data_len;
+    pdr_data_len += sizeof(utf8_str_t) + sub_uri_data_len;
+    pdr_data_len += sizeof(uint16_t);
+    pdr_data_len += sizeof(pldm_pdr_redfish_res_major_t) + schema_name_data_len;
+    pdr_data_len += sizeof(uint16_t);
+
+    uint8_t pdr_data[pdr_data_len];
+    memset(pdr_data, 0, pdr_data_len);
+
+    pldm_pdr_redfish_res_t* redfish_res = (pldm_pdr_redfish_res_t*)&pdr_data[0];
+    redfish_res->resource_id = res_id;
+    redfish_res->is_collection_entry = is_entry;
+    redfish_res->is_redfish_collection = is_collection;
+    redfish_res->containing_resource_id = containing_res_id;
+
+    utf8_str_t* prop_containing_resource = &redfish_res->prop_containing_resource;
+    prop_containing_resource->len = prop_containing_res_name_data_len;
+    memcpy(
+        prop_containing_resource->data, 
+        prop_containing_res_name_data,
+        prop_containing_resource->len
+    );
+
+    utf8_str_t* sub_uri = (utf8_str_t*)(prop_containing_resource->data + prop_containing_resource->len);
+    sub_uri->len = sub_uri_data_len;
+    memcpy(
+        sub_uri->data, 
+        sub_uri_data,
+        sub_uri->len
+    );
+
+    uint16_t* add_res_count_data = (uint16_t*)(sub_uri->data + sub_uri->len);
+    uint16_t add_res_count = 0;
+    memcpy(add_res_count_data, &add_res_count, sizeof(uint16_t));
+
+    pldm_pdr_redfish_res_major_t* major_schema = (pldm_pdr_redfish_res_major_t*)(add_res_count + 1);
+    major_schema->version.version = schema_version;
+    major_schema->dict_len = schema_dict_len;
+    major_schema->dict_sig = schema_dict_sig;
+
+    utf8_str_t* schema_name = &major_schema->name;
+    schema_name->len = schema_name_data_len;
+    memcpy(
+        schema_name->data, 
+        schema_name_data,
+        schema_name->len
+    );
+
+    uint16_t* oem_count_data = (uint16_t*)(schema_name->data + schema_name->len);
+    uint16_t oem_count = 0;
+    memcpy(oem_count_data, &oem_count, sizeof(uint16_t));
+
+    return  pldm_pdr_create_record(
+        PLDM_PDR_TYPE_REDFISH_RESOURCE,
+        pdr_gen_record_change(),
+        pdr_data,
+        pdr_data_len
+    );
+}
+
+
 void dht11_humidity_sens_read(
     uint8_t data[],
     size_t data_len
@@ -525,6 +619,74 @@ int main()
         dht11_temperature_sens_read
     );
 
+
+    {
+        uint8_t prop_containing_res_name[] = "ChassisCollection.ChassisCollection";
+        uint8_t sub_uri[] = "";
+        uint8_t schema_name[] = "Chassis";
+
+        pldm_pdr_repo_add_entry(
+            pdr_repo,
+            pdr_create_redfish_resource(
+                1, PLDM_PDR_RES_ID_EXTERNAL, false, true,
+                prop_containing_res_name, sizeof(prop_containing_res_name),
+                sub_uri, sizeof(sub_uri),
+                schema_name, sizeof(schema_name),
+                0xF125F000, 6444, 0xb1207132
+            )
+        );
+    }
+
+    {
+        uint8_t prop_containing_res_name[] = "";
+        uint8_t sub_uri[] = "Sensors";
+        uint8_t schema_name[] = "SensorCollection";
+
+        pldm_pdr_repo_add_entry(
+            pdr_repo,
+            pdr_create_redfish_resource(
+                2, 1, true, false,
+                prop_containing_res_name, sizeof(prop_containing_res_name),
+                sub_uri, sizeof(sub_uri),
+                schema_name, sizeof(schema_name),
+                0xFFFFFFFF, 144, 0x1c331244
+            )
+        );
+    }
+
+    {
+        uint8_t prop_containing_res_name[] = "";
+        uint8_t sub_uri[] = "DHT11_RH";
+        uint8_t schema_name[] = "Sensor";
+
+        pldm_pdr_repo_add_entry(
+            pdr_repo,
+            pdr_create_redfish_resource(
+                3, 2, false, true,
+                prop_containing_res_name, sizeof(prop_containing_res_name),
+                sub_uri, sizeof(sub_uri),
+                schema_name, sizeof(schema_name),
+                0xF1F8F100, 7273, 0x669d4a47
+            )
+        );
+    }
+
+    {
+        uint8_t prop_containing_res_name[] = "";
+        uint8_t sub_uri[] = "DHT11_TEMP";
+        uint8_t schema_name[] = "Sensor";
+
+        pldm_pdr_repo_add_entry(
+            pdr_repo,
+            pdr_create_redfish_resource(
+                4, 2, false, true,
+                prop_containing_res_name, sizeof(prop_containing_res_name),
+                sub_uri, sizeof(sub_uri),
+                schema_name, sizeof(schema_name),
+                0xF1F8F100, 7273, 0x669d4a47
+            )
+        );
+    }
 
     while (true)
     {

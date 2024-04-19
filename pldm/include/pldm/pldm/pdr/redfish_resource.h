@@ -30,7 +30,7 @@ typedef struct __attribute__ ((__packed__)) pldm_pdr_redfish_res_t
     bool is_redfish_collection  : 1;
     uint8_t                     : 5;
     uint32_t containing_resource_id;
-    uint16_t containing_resource_len;
+    utf8_str_t prop_containing_resource;
 }
 pldm_pdr_redfish_res_t;
 

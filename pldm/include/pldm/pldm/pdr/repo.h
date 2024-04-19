@@ -97,5 +97,9 @@ void pldm_pdr_repo_sensor_set_read_callback(
     pldm_pdr_sensor_read_t sensor_read_callback
 );
 
+void pldm_pdr_repo_sensor_set_read_callback(
+    pldm_pdr_repo_sens_ref_t* sens_ref,
+    pldm_pdr_sensor_read_t sensor_read_callback
+);
 
 #endif // REPO_H
