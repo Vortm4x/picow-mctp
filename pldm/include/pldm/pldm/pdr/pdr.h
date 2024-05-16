@@ -1,16 +1,174 @@
-#ifndef PDR_H
-#define PDR_H
+#ifndef PLDM_PDR_H
+#define PLDM_PDR_H
 
 #include <pldm/pldm.h>
-#include <stdint.h>
 
+typedef enum __attribute__ ((__packed__)) pldm_pdr_data_size_t
+{
+    PLDM_PDR_DATA_SIZE_UNSIGNED_INT8,
+    PLDM_PDR_DATA_SIZE_SIGNED_INT8,
+    PLDM_PDR_DATA_SIZE_UNSIGNED_INT16,
+    PLDM_PDR_DATA_SIZE_SIGNED_INT16,
+    PLDM_PDR_DATA_SIZE_UNSIGNED_INT32,
+    PLDM_PDR_DATA_SIZE_SIGNED_INT32,
+    PLDM_PDR_DATA_SIZE_REAL32,
+}
+pldm_pdr_data_size_t;
 
-#define PLDM_PDR_NULL_HANDLE 0x00000000
-#define PLDM_PDR_NULL_RECORD_CHANGE 0x0000
-#define PLDM_PDR_NULL_SENSOR_ID 0x0000
+typedef enum __attribute__ ((__packed__)) pldm_pdr_oper_state_t
+{
+    PLDM_PDR_OPER_STATE_ENABLED,
+    PLDM_PDR_OPER_STATE_DISABLED,
+    PLDM_PDR_OPER_STATE_UNAVAILABLE,
+    PLDM_PDR_OPER_STATE_UNKNOWN,
+    PLDM_PDR_OPER_STATE_FAILED,
+    PLDM_PDR_OPER_STATE_INITIALIZING,
+    PLDM_PDR_OPER_STATE_SHUTTING_DOWN,
+    PLDM_PDR_OPER_STATE_IN_TEST,
+}
+pldm_pdr_oper_state_t;
 
 
 #define PLDM_PDR_HEADER_VER 0x01
+#define PLDM_PDR_NULL_RECORD_HANDLE 0x00000000
+#define PLDM_PDR_NULL_RECORD_CHANGE 0x0000
+#define PLDM_PDR_CONTAINER_PLDM_SYSTEM 0x0000
+
+#define PLDM_ENTITY_UNSPEC                              0
+#define PLDM_ENTITY_OTHER                               1
+
+// Miscellaneous Entities
+#define PLDM_ENTITY_NETWORK                             2
+#define PLDM_ENTITY_GROUP                               3
+#define PLDM_ENTITY_REMOTE_MANAGEMENT_CONTROLLER_DEVICE 4
+#define PLDM_ENTITY_EXT_ENV                             5
+#define PLDM_ENTITY_COMMUNICATION_CHANNEL               6
+#define PLDM_ENTITY_TERMINUS                            7
+#define PLDM_ENTITY_PLATFORM_EVENT_LOG                  8
+
+// Human Interface Entities
+#define PLDM_ENTITY_KEYPAD                              15
+#define PLDM_ENTITY_SWITCH                              16
+#define PLDM_ENTITY_PUSHBUTTON                          17
+#define PLDM_ENTITY_DISPLAY                             18
+#define PLDM_ENTITY_INDICATOR                           19
+
+// Software/Firmware Entities
+#define PLDM_ENTITY_SYSTEM_MANAGEMENT_SOFTWARE          30
+#define PLDM_ENTITY_SYSTEM_FIRMWARE                     31
+#define PLDM_ENTITY_OPERATING_SYSTEM                    32
+#define PLDM_ENTITY_VIRTUAL_MACHINE_MAANAGER            33
+#define PLDM_ENTITY_OS_LOADER                           34
+#define PLDM_ENTITY_DEVICE_DRIVER                       35
+#define PLDM_ENTITY_MANAGEMENT_CONTROLLER_FIRMWARE      36
+
+// Chassis/Enclosure Entities
+#define PLDM_ENTITY_SYSTEM_CHASSIS                      45
+#define PLDM_ENTITY_SUB_CHASSIS                         46
+#define PLDM_ENTITY_DISK_DRIVE_BAY                      47
+#define PLDM_ENTITY_PERIPHERAL_BAY                      48
+#define PLDM_ENTITY_DEVICE_BAY                          49
+#define PLDM_ENTITY_DOOR                                50
+#define PLDM_ENTITY_ACCESS_PANEL                        51
+#define PLDM_ENTITY_COVER                               52
+
+// Board/Card/Module Entities
+#define PLDM_ENTITY_BOARD                               60
+#define PLDM_ENTITY_CARD                                61
+#define PLDM_ENTITY_MODULE                              62
+#define PLDM_ENTITY_SYSTEM_MANAGEMENT_MODULE            63
+#define PLDM_ENTITY_SYSTEM_BOARD                        64
+#define PLDM_ENTITY_MEMORY_BOARD                        65
+#define PLDM_ENTITY_PROCESSOR_MODULE                    67
+#define PLDM_ENTITY_ADD_IN_CARD                         68
+#define PLDM_ENTITY_CHASSIS_FRONT_PANEL_BOARD           69
+#define PLDM_ENTITY_BACK_PANEL_BOARD                    70
+#define PLDM_ENTITY_POWER_MANAGEMENT_DISTRIBUTION_BOARD 71
+#define PLDM_ENTITY_POWER_SYSTEM_BOARD                  72
+#define PLDM_ENTITY_DRIVE_BACKPLANE                     73
+#define PLDM_ENTITY_SYSTEM_INTERNAL_EXPANSION_BOARD     74
+#define PLDM_ENTITY_OTHER_SYSTEM_BOARD                  75
+#define PLDM_ENTITY_CHASSIS_BACK_PANEL_BOARD            76
+#define PLDM_ENTITY_PROCESSING_BLADE                    77
+#define PLDM_ENTITY_CONNECTIVITY_SWITCH                 78
+#define PLDM_ENTITY_PROCESSOR_MEMORY_MODULE             79
+#define PLDM_ENTITY_IO_MODULE                           80
+#define PLDM_ENTITY_PROCESSOR_IO_MODULE                 81
+
+// Cooling Entities
+#define PLDM_ENTITY_COOLING_DEVICE                      90
+#define PLDM_ENTITY_COOLING_SUBSYSTEM                   91
+#define PLDM_ENTITY_COOLING_UNIT_DOMAIN                 92
+#define PLDM_ENTITY_FAN                                 93
+#define PLDM_ENTITY_PELTIER_COOLING_DEVICE              94
+#define PLDM_ENTITY_LIQUID_COOLING_DEVICE               95
+#define PLDM_ENTITY_LIQUID_COOLING_SUBSYSTEM            96
+
+// Storage Device Entities
+#define PLDM_ENTITY_OTHER_STORAGE_DEVICE                105
+#define PLDM_ENTITY_FLOPPY_DRIVE                        106
+#define PLDM_ENTITY_FIXED_DISK                          107
+#define PLDM_ENTITY_CD_DRIVE                            108
+#define PLDM_ENTITY_CD_DVD_DRIVE                        109
+#define PLDM_ENTITY_OTHER_SILICON_STORAGE_DEVICE        110
+#define PLDM_ENTITY_SOLID_STATE_DRIVE                   111
+
+// Power Entities
+#define PLDM_ENTITY_POWER_SUPPLY                        120
+#define PLDM_ENTITY_BATTERY                             121
+#define PLDM_ENTITY_SUPER_CAPACITOR                     122
+#define PLDM_ENTITY_POWER_CONVERTER                     123
+#define PLDM_ENTITY_DC_DC_CONVERTER                     124
+#define PLDM_ENTITY_AC_MAINS_POWER_SUPPLY               125
+#define PLDM_ENTITY_DC_MAINS_POWER_SUPPLY               126
+
+// Chip Entities
+#define PLDM_ENTITY_PROCESSOR                           135
+#define PLDM_ENTITY_CHIPSET_COMPONENT                   136
+#define PLDM_ENTITY_MANAGEMENT_CONTROLLER               137
+#define PLDM_ENTITY_PERIPHERAL_CONTROLLER               138
+#define PLDM_ENTITY_SEEPROM                             139
+#define PLDM_ENTITY_NVRAM_CHIP                          140
+#define PLDM_ENTITY_FLASH_MEMORY_CHIP                   141
+#define PLDM_ENTITY_MEMORY_CHIP                         142
+#define PLDM_ENTITY_MEMORY_CONTROLLER                   143
+#define PLDM_ENTITY_NETWORK_CONTROLLER                  144
+#define PLDM_ENTITY_IO_CONTROLLER                       145
+#define PLDM_ENTITY_SOUTH_BRIDGE                        146
+#define PLDM_ENTITY_REAL_TIME_CLOCK                     147
+
+// Bus Entities
+#define PLDM_ENTITY_OTHER_BUS                           160
+#define PLDM_ENTITY_SYSTEM_BUS                          161
+#define PLDM_ENTITY_I2C_BUS                             162
+#define PLDM_ENTITY_SMBUS_BUS                           163
+#define PLDM_ENTITY_SPI_BUS                             164
+#define PLDM_ENTITY_PCI_BUS                             165
+#define PLDM_ENTITY_PCI_EXPRESS_BUS                     166
+#define PLDM_ENTITY_PECI_BUS                            167
+#define PLDM_ENTITY_LPC_BUS                             168
+#define PLDM_ENTITY_USB_BUS                             169
+#define PLDM_ENTITY_FIREWIRE_BUS                        170
+#define PLDM_ENTITY_SCSI_BUS                            171
+#define PLDM_ENTITY_SATA_SAS_BUS                        172
+#define PLDM_ENTITY_PROCESSOR_FRONT_SIDE_BUS            173
+#define PLDM_ENTITY_INTER_PROCESSOR_BUS                 174
+
+// Connectors/Cables
+#define PLDM_ENTITY_CONNECTOR                           185
+#define PLDM_ENTITY_SLOT                                186
+#define PLDM_ENTITY_CABLE                               187
+#define PLDM_ENTITY_INTERCONNECT                        188
+#define PLDM_ENTITY_PLUG                                189
+#define PLDM_ENTITY_SOCKET                              190
+
+// OEM/Vendor-Defined Entities
+#define PLDM_ENTITY_CHASSIS_SPECIFIC_MIN                8192
+#define PLDM_ENTITY_CHASSIS_SPECIFIC_MAX                16383
+#define PLDM_ENTITY_BOARD_SET_SPECIFIC_MIN              16384
+#define PLDM_ENTITY_BOARD_SET_SPECIFIC_MAX              24575
+#define PLDM_ENTITY_OEM_SYSTEM_INTEGRATOR_DEFINED_MIN   24576
+#define PLDM_ENTITY_OEM_SYSTEM_INTEGRATOR_DEFINED_MAX   32767
 
 
 typedef enum __attribute__ ((__packed__)) pldm_pdr_type_t
@@ -44,166 +202,64 @@ typedef enum __attribute__ ((__packed__)) pldm_pdr_type_t
 }
 pldm_pdr_type_t;
 
-typedef enum __attribute__ ((__packed__)) pldm_pdr_data_size_t
+typedef struct __attribute__ ((__packed__)) pldm_entity_type_t
 {
-    PLDM_PDR_DATA_SIZE_UNSIGNED_INT8,
-    PLDM_PDR_DATA_SIZE_SIGNED_INT8,
-    PLDM_PDR_DATA_SIZE_UNSIGNED_INT16,
-    PLDM_PDR_DATA_SIZE_SIGNED_INT16,
-    PLDM_PDR_DATA_SIZE_UNSIGNED_INT32,
-    PLDM_PDR_DATA_SIZE_SIGNED_INT32,
-    PLDM_PDR_DATA_SIZE_REAL32,
+    uint16_t id     : 15;
+    bool is_logical : 1;
 }
-pldm_pdr_data_size_t;
+pldm_entity_type_t;
 
-typedef enum __attribute__ ((__packed__)) pldm_num_measure_unit_t
+typedef struct __attribute__ ((__packed__)) pldm_entity_info_t
 {
-    PLDM_NUM_MEASURE_UNIT_NONE                   = 0,
-    PLDM_NUM_MEASURE_UNIT_UNSPEC                 = 1,
-    PLDM_NUM_MEASURE_UNIT_DEG_C                  = 2,
-    PLDM_NUM_MEASURE_UNIT_DEG_F                  = 3,
-    PLDM_NUM_MEASURE_UNIT_KELVINS                = 4,
-    PLDM_NUM_MEASURE_UNIT_VOLTS                  = 5,
-    PLDM_NUM_MEASURE_UNIT_AMPS                   = 6,
-    PLDM_NUM_MEASURE_UNIT_WATTS                  = 7,
-    PLDM_NUM_MEASURE_UNIT_JOULES                 = 8,
-    PLDM_NUM_MEASURE_UNIT_COULOMBS               = 9,
-    PLDM_NUM_MEASURE_UNIT_VA                     = 10,
-    PLDM_NUM_MEASURE_UNIT_NITS                   = 11,
-    PLDM_NUM_MEASURE_UNIT_LUMENS                 = 12,
-    PLDM_NUM_MEASURE_UNIT_LUX                    = 13,
-    PLDM_NUM_MEASURE_UNIT_CANDELAS               = 14,
-    PLDM_NUM_MEASURE_UNIT_KPA                    = 15,
-    PLDM_NUM_MEASURE_UNIT_PSI                    = 16,
-    PLDM_NUM_MEASURE_UNIT_NEWTONS                = 17,
-    PLDM_NUM_MEASURE_UNIT_CFM                    = 18,
-    PLDM_NUM_MEASURE_UNIT_RPM                    = 19,
-    PLDM_NUM_MEASURE_UNIT_HERTZ                  = 20,
-    PLDM_NUM_MEASURE_UNIT_SECONDS                = 21,
-    PLDM_NUM_MEASURE_UNIT_MINUTES                = 22,
-    PLDM_NUM_MEASURE_UNIT_HOURS                  = 23,
-    PLDM_NUM_MEASURE_UNIT_DAYS                   = 24,
-    PLDM_NUM_MEASURE_UNIT_WEEKS                  = 25,
-    PLDM_NUM_MEASURE_UNIT_MILS                   = 26,
-    PLDM_NUM_MEASURE_UNIT_INCHES                 = 27,
-    PLDM_NUM_MEASURE_UNIT_FEET                   = 28,
-    PLDM_NUM_MEASURE_UNIT_CUBIC_INCHES           = 29,
-    PLDM_NUM_MEASURE_UNIT_CUBIC_FEET             = 30,
-    PLDM_NUM_MEASURE_UNIT_METERS                 = 31,
-    PLDM_NUM_MEASURE_UNIT_CUBIC_CENTIMETERS      = 32,
-    PLDM_NUM_MEASURE_UNIT_CUBIC_METERS           = 33,
-    PLDM_NUM_MEASURE_UNIT_LITERS                 = 34,
-    PLDM_NUM_MEASURE_UNIT_FLUID_OUNCES           = 35,
-    PLDM_NUM_MEASURE_UNIT_RADIANS                = 36,
-    PLDM_NUM_MEASURE_UNIT_STERADIANS             = 37,
-    PLDM_NUM_MEASURE_UNIT_REVOLUTIONS            = 38,
-    PLDM_NUM_MEASURE_UNIT_CYCLES                 = 39,
-    PLDM_NUM_MEASURE_UNIT_GRAVITIES              = 40,
-    PLDM_NUM_MEASURE_UNIT_OUNCES                 = 41,
-    PLDM_NUM_MEASURE_UNIT_POUNDS                 = 42,
-    PLDM_NUM_MEASURE_UNIT_FOOT_POUNDS            = 43,
-    PLDM_NUM_MEASURE_UNIT_OUNCE_INCHES           = 44,
-    PLDM_NUM_MEASURE_UNIT_GAUSS                  = 45,
-    PLDM_NUM_MEASURE_UNIT_GILBERTS               = 46,
-    PLDM_NUM_MEASURE_UNIT_HENRIES                = 47,
-    PLDM_NUM_MEASURE_UNIT_FARADS                 = 48,
-    PLDM_NUM_MEASURE_UNIT_OHMS                   = 49,
-    PLDM_NUM_MEASURE_UNIT_SIEMENS                = 50,
-    PLDM_NUM_MEASURE_UNIT_MOLES                  = 51,
-    PLDM_NUM_MEASURE_UNIT_BECQUERELS             = 52,
-    PLDM_NUM_MEASURE_UNIT_PPM                    = 53,
-    PLDM_NUM_MEASURE_UNIT_DECIBELS               = 54,
-    PLDM_NUM_MEASURE_UNIT_DBA                    = 55,
-    PLDM_NUM_MEASURE_UNIT_DBC                    = 56,
-    PLDM_NUM_MEASURE_UNIT_GRAYS                  = 57,
-    PLDM_NUM_MEASURE_UNIT_SIEVERTS               = 58,
-    PLDM_NUM_MEASURE_UNIT_COLOR_TEMP_DEG_K       = 59,
-    PLDM_NUM_MEASURE_UNIT_BITS                   = 60,
-    PLDM_NUM_MEASURE_UNIT_BYTES                  = 61,
-    PLDM_NUM_MEASURE_UNIT_WORDS                  = 62,
-    PLDM_NUM_MEASURE_UNIT_DWORDS                 = 63,
-    PLDM_NUM_MEASURE_UNIT_QWORDS                 = 64,
-    PLDM_NUM_MEASURE_UNIT_PERCENTAGE             = 65,
-    PLDM_NUM_MEASURE_UNIT_PASCALS                = 66,
-    PLDM_NUM_MEASURE_UNIT_COUNTS                 = 67,
-    PLDM_NUM_MEASURE_UNIT_GRAMS                  = 68,
-    PLDM_NUM_MEASURE_UNIT_NEWTON_METERS          = 69,
-    PLDM_NUM_MEASURE_UNIT_HITS                   = 70,
-    PLDM_NUM_MEASURE_UNIT_MISSES                 = 71,
-    PLDM_NUM_MEASURE_UNIT_RETRIES                = 72,
-    PLDM_NUM_MEASURE_UNIT_OVERRUNS               = 73,
-    PLDM_NUM_MEASURE_UNIT_UNDERRUNS              = 74,
-    PLDM_NUM_MEASURE_UNIT_COLLISIONS             = 75,
-    PLDM_NUM_MEASURE_UNIT_PACKETS                = 76,
-    PLDM_NUM_MEASURE_UNIT_MESSAGES               = 77,
-    PLDM_NUM_MEASURE_UNIT_CHARACTERS             = 78,
-    PLDM_NUM_MEASURE_UNIT_ERRORS                 = 79,
-    PLDM_NUM_MEASURE_UNIT_CORRECTED_ERRORS       = 80,
-    PLDM_NUM_MEASURE_UNIT_UNCORRECTABLE_ERRORS   = 81,
-    PLDM_NUM_MEASURE_UNIT_SQUARE_MILS            = 82,
-    PLDM_NUM_MEASURE_UNIT_SQUARE_INCHES          = 83,
-    PLDM_NUM_MEASURE_UNIT_SQUARE_FEET            = 84,
-    PLDM_NUM_MEASURE_UNIT_SQUARE_CENTIMETERS     = 85,
-    PLDM_NUM_MEASURE_UNIT_SQUARE_METERS          = 86,
-    PLDM_NUM_MEASURE_UNIT_OEM_UNIT               = 255,
+    pldm_entity_type_t type;
+    uint16_t instance_number;
+    uint16_t container_id;
 }
-pldm_num_measure_unit_t;
-
-typedef enum __attribute__ ((__packed__)) pldm_num_rate_unit_t
-{
-    PLDM_NUM_RATE_UNIT_NONE,
-    PLDM_NUM_RATE_UNIT_MICRO_SECOND,
-    PLDM_NUM_RATE_UNIT_MILLI_SECOND,
-    PLDM_NUM_RATE_UNIT_SECOND,
-    PLDM_NUM_RATE_UNIT_MINUTE,
-    PLDM_NUM_RATE_UNIT_HOUR,
-    PLDM_NUM_RATE_UNIT_DAY,
-    PLDM_NUM_RATE_UNIT_WEEK,
-    PLDM_NUM_RATE_UNIT_MONTH,
-    PLDM_NUM_RATE_UNIT_YEAR,
-}
-pldm_num_rate_unit_t;
-
-typedef enum __attribute__ ((__packed__)) pldm_pdr_init_t
-{
-    PLDM_PDR_INIT_NO_INIT,
-    PLDM_PDR_INIT_USE_INIT_PDR,
-    PLDM_PDR_INIT_ENABLE_SENSOR,
-    PLDM_PDR_INIT_DISABLE_SENSOR,
-}
-pldm_pdr_init_t;
+pldm_entity_info_t;
 
 
-typedef struct __attribute__ ((__packed__)) pldm_pdr_header_t
-{
-    uint32_t record_handle;
-    uint8_t version;
-    pldm_pdr_type_t pdr_type;
-    uint16_t record_change;
-    uint16_t data_len;
-    uint8_t data[];
-}
-pldm_pdr_header_t;
+struct pldm_pdr_header_t;
+typedef struct pldm_pdr_header_t pldm_pdr_header_t;
 
 
-pldm_pdr_header_t* pldm_pdr_create_record(
+pldm_pdr_header_t* pldm_pdr_init(
     pldm_pdr_type_t pdr_type,
     uint16_t record_change,
-    uint8_t data[],
-    uint16_t data_len
+    uint8_t record_data[],
+    uint16_t record_data_len
 );
 
-void pldm_pdr_destroy_record(
-    pldm_pdr_header_t* record
+void pldm_pdr_destroy(
+    pldm_pdr_header_t* pdr
 );
 
-uint32_t pldm_pdr_record_len(
-    pldm_pdr_header_t* record
+uint32_t pldm_pdr_get_record_handle(
+    pldm_pdr_header_t* pdr
 );
 
-uint32_t pldm_pdr_data_type_size(
-    pldm_pdr_data_size_t data_size
+pldm_pdr_type_t pldm_pdr_get_type(
+    pldm_pdr_header_t* pdr
 );
 
+uint16_t pldm_pdr_get_record_change(
+    pldm_pdr_header_t* pdr
+);
 
-#endif // PDR_H
+void pldm_pdr_set_record_change(
+    pldm_pdr_header_t* pdr,
+    uint16_t record_change
+);
+
+uint16_t pldm_pdr_get_data_len(
+    pldm_pdr_header_t* pdr
+);
+
+uint8_t* pldm_pdr_get_data(
+    pldm_pdr_header_t* pdr
+);
+
+uint32_t pldm_pdr_get_size(
+    pldm_pdr_header_t* pdr
+);
+
+#endif // PLDM_PDR_H

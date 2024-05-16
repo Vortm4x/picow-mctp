@@ -1,5 +1,5 @@
-#ifndef UTIL_H
-#define UTIL_H
+#ifndef PLDM_UTIL_H
+#define PLDM_UTIL_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -15,4 +15,4 @@ uint8_t crc8_calc_byte(uint8_t crc, uint8_t data);
 uint8_t crc8_calc_block(uint8_t crc, uint8_t block[], size_t block_len);
 
 
-#endif // UTIL_H
+#endif // PLDM_UTIL_H

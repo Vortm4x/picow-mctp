@@ -2,7 +2,7 @@
 #define PLDM_BASE_HANDLER_H
 
 #include <pldm/pldm.h>
-#include <pldm/base.h>
+#include <pldm/message/base.h>
 
 void pldm_base_message_rx_callback(
     pldm_inst_t* pldm_inst,

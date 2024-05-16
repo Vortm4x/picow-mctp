@@ -1,21 +1,9 @@
-#ifndef PLATFORM_H
-#define PLATFORM_H
+#ifndef PLDM_MESSAGE_PLATFORM_H
+#define PLDM_MESSAGE_PLATFORM_H
 
 #include <pldm/pldm.h>
 #include <pldm/pdr/pdr.h>
 
-typedef enum __attribute__ ((__packed__)) pldm_sensor_oper_state_t
-{
-    PLDM_SENSOR_OPER_STATE_ENABLED,
-    PLDM_SENSOR_OPER_STATE_DISABLED,
-    PLDM_SENSOR_OPER_STATE_UNAVAILABLE,
-    PLDM_SENSOR_OPER_STATE_UNKNOWN,
-    PLDM_SENSOR_OPER_STATE_FAILED,
-    PLDM_SENSOR_OPER_STATE_INITIALIZING,
-    PLDM_SENSOR_OPER_STATE_SHUTTING_DOWN,
-    PLDM_SENSOR_OPER_STATE_IN_TEST,
-}
-pldm_sensor_oper_state_t;
 
 typedef enum __attribute__ ((__packed__)) pldm_sensor_event_msg_enable_t
 {
@@ -60,7 +48,7 @@ typedef struct __attribute__ ((__packed__)) pldm_resp_num_sens_get_reading_t
     pldm_base_header_t header;
     pldm_cmd_cc_t completion_code;
     pldm_pdr_data_size_t data_size;
-    pldm_sensor_oper_state_t oper_state;
+    pldm_pdr_oper_state_t oper_state;
     pldm_sensor_event_msg_enable_t event_msg_enable;
     pldm_sensor_state_t present_state;
     pldm_sensor_state_t prev_state;
@@ -130,7 +118,6 @@ typedef struct __attribute__ ((__packed__)) pldm_resp_pdr_repo_get_t
 pldm_resp_pdr_repo_get_t;
 
 
-
 // PLDM_PLATFORM_CMD_PRD_REPO_SIG
 
 typedef struct __attribute__ ((__packed__)) pldm_req_pdr_repo_sig_t
@@ -147,4 +134,4 @@ typedef struct __attribute__ ((__packed__)) pldm_resp_pdr_repo_sig_t
 }
 pldm_resp_pdr_repo_sig_t;
 
-#endif // PLATFORM_H
+#endif // PLDM_MESSAGE_PLATFORM_H

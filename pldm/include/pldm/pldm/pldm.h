@@ -1,96 +1,16 @@
 #ifndef PLDM_H
 #define PLDM_H
 
+#include <pldm/types.h>
+#include <pldm/terminus.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <pico/types.h>
+
 
 #define PLDM_HEADER_VER 0b00
 #define PLDM_TID_UNASSIGNED 0x00
 #define PLDM_TID_RESERVED 0xFF
-
-typedef struct __attribute__ ((__packed__)) real32_t
-{
-    uint32_t mantissa   : 23;
-    uint32_t exponent   : 8;
-    bool sign           : 1;
-}
-real32_t;
-
-typedef struct __attribute__ ((__packed__)) real64_t
-{
-    uint64_t mantissa   : 52;
-    uint64_t exponent   : 11;
-    bool sign           : 1;
-}
-real64_t;
-
-typedef struct __attribute__ ((__packed__)) utf8_str_t
-{
-    uint16_t len;
-    uint8_t data[];
-}
-utf8_str_t;
-
-typedef union __attribute__ ((__packed__)) ver32_t
-{
-    struct
-    {
-        uint8_t alpha;
-        uint8_t update;
-        uint8_t minor;
-        uint8_t major;
-    };
-    
-    uint32_t version;
-}
-ver32_t;
-
-
-typedef enum __attribute__ ((__packed__)) time_resolution_t
-{
-    TIME_RESOLUTION_MICRO_SEC       = 0,
-    TIME_RESOLUTION_10_MICRO_SEC    = 1,
-    TIME_RESOLUTION_100_MICRO_SEC   = 2,
-    TIME_RESOLUTION_MILLI_SEC       = 3,
-    TIME_RESOLUTION_10_MILLI_SEC    = 4,
-    TIME_RESOLUTION_100_MILLI_SEC   = 5,
-    TIME_RESOLUTION_SEC             = 6,
-    TIME_RESOLUTION_10_SEC          = 7,
-    TIME_RESOLUTION_MIN             = 8,
-    TIME_RESOLUTION_10_MIN          = 9,
-    TIME_RESOLUTION_HOUR            = 10,
-    TIME_RESOLUTION_DAY             = 11,
-    TIME_RESOLUTION_MONTH           = 12,
-    TIME_RESOLUTION_YEAR            = 13,
-    TIME_RESOLUTION_NULL            = 15,
-}
-time_resolution_t;
-
-typedef enum __attribute__ ((__packed__)) utc_resolution_t
-{
-    UTC_RESOLUTION_UNSPEC   = 0,
-    UTC_RESOLUTION_MIN      = 1,
-    UTC_RESOLUTION_10_MIN   = 2,
-    UTC_RESOLUTION_HOUR     = 3,
-}
-utc_resolution_t;
-
-typedef struct __attribute__ ((__packed__)) timestamp104_t
-{
-    int16_t utc_offset;
-    uint32_t micro_sec : 24;
-    uint8_t second;
-    uint8_t minute;
-    uint8_t hour;
-    uint8_t day;
-    uint8_t month;
-    uint16_t year;
-    time_resolution_t time_res : 4;
-    utc_resolution_t utc_res : 4;
-}
-timestamp104_t;
-
 
 
 typedef enum __attribute__ ((__packed__)) pldm_type_t
@@ -107,6 +27,7 @@ pldm_type_t;
 
 typedef enum __attribute__ ((__packed__)) pldm_cmd_t
 {
+    // PLDM TYPE 0 (BASE)
     PLDM_BASE_CMD_SET_TID                               = 0x01,
     PLDM_BASE_CMD_GET_TID                               = 0x02,
     PLDM_BASE_CMD_GET_PLDM_VERSION                      = 0x03,
@@ -117,6 +38,7 @@ typedef enum __attribute__ ((__packed__)) pldm_cmd_t
     PLDM_BASE_CMD_MULTIPART_SEND                        = 0x08,
     PLDM_BASE_CMD_MULTIPART_RECEIVE                     = 0x09,
 
+    // PLDM TYPE 2 (PLATFORM)
     PLDM_PLATFORM_CMD_TERM_PLATFORM_EVENT_MSG           = 0x0A,
     PLDM_PLATFORM_CMD_TERM_POLL_FOR_PLATFORM_EVENT_MSG  = 0x0B,
     PLDM_PLATFORM_CMD_TERM_EVENT_MSG_SUPPORTED          = 0x0C,
@@ -157,6 +79,31 @@ typedef enum __attribute__ ((__packed__)) pldm_cmd_t
     PLDM_PLATFORM_CMD_PRD_REPO_FIND                     = 0x52,
     PLDM_PLATFORM_CMD_PRD_REPO_SIG                      = 0x53,
     PLDM_PLATFORM_CMD_PRD_REPO_RUN_INIT_AGET            = 0x58,
+
+    // PLDM TYPE 6 (REDFISH)
+    PLDM_REDFISH_CMD_NEGOTIATE_REDFISH_PARAMS           = 0x01,
+    PLDM_REDFISH_CMD_NEGOTIATE_MEDIUM_PARAMS            = 0x02,
+    PLDM_REDFISH_CMD_GET_SCHEMA_DICT                    = 0x03,
+    PLDM_REDFISH_CMD_GET_SCHEMA_URI                     = 0x04,
+    PLDM_REDFISH_CMD_GET_RESOURCE_ETAG                  = 0x05,
+    PLDM_REDFISH_CMD_GET_OEM_COUNT                      = 0x06,
+    PLDM_REDFISH_CMD_GET_OEM_NAME                       = 0x07,
+    PLDM_REDFISH_CMD_GET_REGISTRY_COUNT                 = 0x08,
+    PLDM_REDFISH_CMD_GET_REGISTRY_DETAILS               = 0x09,
+    PLDM_REDFISH_CMD_SELECT_REGISTRY_VERSION            = 0x0A,
+    PLDM_REDFISH_CMD_GET_MESSAGE_REGISTRY               = 0x0B,
+    PLDM_REDFISH_CMD_GET_SCHEMA_FILE                    = 0x0C,
+
+    PLDM_REDFISH_CMD_RDE_OPERATION_INIT                 = 0x10,
+    PLDM_REDFISH_CMD_SUPPLY_REQ_PARAMS                  = 0x11,
+    PLDM_REDFISH_CMD_RETRIEVE_RESP_PARAMS               = 0x12,
+    PLDM_REDFISH_CMD_RDE_OPERATION_COMPLETE             = 0x13,
+    PLDM_REDFISH_CMD_RDE_OPERATION_STATUS               = 0x14,
+    PLDM_REDFISH_CMD_RDE_OPERATION_KILL                 = 0x15,
+    PLDM_REDFISH_CMD_RDE_OPERATION_ENUMERATE            = 0x16,
+
+    PLDM_REDFISH_CMD_RDE_MULTIPART_SEND                 = 0x30,
+    PLDM_REDFISH_CMD_RDE_MULTIPART_RECEIVE              = 0x31,
 }
 pldm_cmd_t;
 
@@ -171,8 +118,10 @@ typedef enum __attribute__ ((__packed__)) pldm_cmd_cc_t
     PLDM_CMD_CC_INVALID_PLDM_TYPE                   = 0x20,
     PLDM_CMD_CC_INVALID_DATA_TRANSFER_HANDLE        = 0x80,
     PLDM_CMD_CC_INVALID_SENSOR_ID                   = 0x80,
+    PLDM_CMD_CC_ERROR_BAD_CHECKSUM                  = 0x80,
     PLDM_CMD_CC_INVALID_TRANSFER_OP_FLAG            = 0x81,
     PLDM_CMD_CC_REARM_UNAVAILABLE_IN_PRESENT_STATE  = 0x81,
+    PLDM_CMD_CC_ERROR_CANNOT_CREATE_OPERATION       = 0x81,
     PLDM_CMD_CC_INVALID_RECORD_HANDLE               = 0x82,
     PLDM_CMD_CC_INVALID_PLDM_TYPE_IN_REQ_DATA       = 0x83,
     PLDM_CMD_CC_INVALID_RECORD_CHANGE_NUMBER        = 0x83,
@@ -201,23 +150,9 @@ typedef struct __attribute__ ((__packed__)) pldm_resp_error_t
 }
 pldm_resp_error_t;
 
-typedef struct __attribute__ ((__packed__)) pldm_xfer_pos_t
-{
-    bool is_start   : 1;
-    bool is_middle  : 1;
-    bool is_end     : 1;
-    uint8_t         : 5;
-}
-pldm_xfer_pos_t;
-
 
 struct pldm_inst_t;
 typedef struct pldm_inst_t pldm_inst_t;
-
-struct pldm_transport_t;
-typedef struct pldm_transport_t pldm_transport_t;
-
-typedef uint8_t pldm_tid_t;
 
 typedef void (*pldm_message_rx_t)(
     pldm_inst_t* pldm_inst,
@@ -227,10 +162,6 @@ typedef void (*pldm_message_rx_t)(
     void* args
 );
 
-typedef void (*pldm_tid_changed_t)(
-    pldm_transport_t* transport,
-    void* args
-);
 
 pldm_inst_t* pldm_init();
 
@@ -238,29 +169,23 @@ void pldm_destroy(
     pldm_inst_t* pldm_inst
 );
 
-void pldm_register_terminus(
+uint32_t pldm_get_max_message_len(
+    pldm_transport_t* transport
+);
+
+void pldm_set_max_message_len(
+    pldm_transport_t* transport,
+    uint32_t max_message_len
+);
+
+void pldm_terminus_register(
     pldm_inst_t* pldm_inst,
     pldm_transport_t* transport
 );
 
-void pldm_unregister_terminus(
+void pldm_terminus_unregister(
     pldm_inst_t* pldm_inst,
     pldm_transport_t* transport   
-);
-
-pldm_tid_t pldm_get_terminus_id(
-    pldm_transport_t* transport
-);
-
-void pldm_set_terminus_id(
-    pldm_transport_t* transport,
-    pldm_tid_t tid
-);
-
-void pldm_set_terminus_id_changed_callback(
-    pldm_transport_t* transport,
-    pldm_tid_changed_t pldm_tid_changed_callback,
-    void* pldm_tid_changed_args
 );
 
 void pldm_set_base_message_rx_callback(
@@ -273,6 +198,12 @@ void pldm_set_platform_message_rx_callback(
     pldm_inst_t* pldm_inst,
     pldm_message_rx_t platform_message_rx,
     void* platform_message_args
+);
+
+void pldm_set_redfish_message_rx_callback(
+    pldm_inst_t* pldm_inst,
+    pldm_message_rx_t redfish_message_rx,
+    void* redfish_message_args
 );
 
 void pldm_message_tx(

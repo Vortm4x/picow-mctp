@@ -40,6 +40,4 @@ void handle_req_pdr_repo_sig(
 );
 
 
-
-
 #endif // PLDM_PLATFORM_HANDLER_H

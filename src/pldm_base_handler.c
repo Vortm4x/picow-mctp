@@ -112,7 +112,7 @@ void handle_req_get_tid(
             .instance = base_header->instance
         },
         .completion_code = PLDM_CMD_CC_SUCCESS,
-        .tid = pldm_get_terminus_id(transport),
+        .tid = pldm_terminus_get_id(transport),
     };
 
     pldm_message_tx(
@@ -166,6 +166,11 @@ void handle_req_get_pldm_ver(
         }
         break;
 
+        case PLDM_TYPE_REDFISH:
+        {
+            version_count = 2;
+        }
+        break;
     }
 
     if(version_count == 0)
@@ -210,6 +215,13 @@ void handle_req_get_pldm_ver(
             resp->versions[2].version = 0xF1F0FF00;
         }
         break;
+
+        case PLDM_TYPE_REDFISH:
+        {
+            resp->versions[0].version = 0xF1F1FF00;
+            resp->versions[1].version = 0xF1F0FF00;
+        }
+        break;
     }
 
     uint32_t crc32 = crc32_calc_block(CRC32_INIT, (uint8_t*)resp->versions, versions_len);
@@ -251,7 +263,7 @@ void handle_req_get_pldm_type(
         .protocol_support = {
             .base = true,
             .monitor = true,
-            .redfish = false,
+            .redfish = true,
         }
     };
 
@@ -297,20 +309,50 @@ void handle_req_get_pldm_cmd(
         case PLDM_TYPE_BASE:
         {
             pldm_cmd_support_t cmd_support = {
-                .base_get_tid                   = true,
-                .base_get_pldm_version          = true,
-                .base_get_pldm_type             = true,
-                .base_get_pldm_commands         = true,
-                .platform_num_sens_get_reading  = true,
-                .platform_pdr_repo_info         = true,
-                .platform_pdr_repo_get          = true,
-                .platform_pdr_repo_sig          = true,
+                .base = {
+                    .get_tid            = true,
+                    .get_pldm_version   = true,
+                    .get_pldm_type      = true,
+                    .get_pldm_commands  = true,
+                }
             };
 
             memcpy(&resp.cmd_support, &cmd_support, sizeof(pldm_cmd_support_t));
         }
         break;
-    
+
+        case PLDM_TYPE_PLATFORM:
+        {
+            pldm_cmd_support_t cmd_support = {
+                .platform = {
+                    .num_sens_get_reading  = true,
+                    .pdr_repo_info         = true,
+                    .pdr_repo_get          = true,
+                    .pdr_repo_sig          = true,
+                }
+            };
+
+            memcpy(&resp.cmd_support, &cmd_support, sizeof(pldm_cmd_support_t));
+        }
+        break;
+
+        case PLDM_TYPE_REDFISH:
+        {
+            pldm_cmd_support_t cmd_support = {
+                .redfish = {
+                    .negotiate_redfish_params   = true,
+                    .negotiate_medium_params    = true,
+                    .get_schema_dict            = true,
+                    .get_schema_uri             = true,
+                    .get_resource_etag          = true,
+                    .rde_multipart_receive      = true,
+                }
+            };
+
+            memcpy(&resp.cmd_support, &cmd_support, sizeof(pldm_cmd_support_t));
+        }
+        break;
+
         default:
         {
             return pldm_resp_error_tx(

@@ -1,5 +1,5 @@
-#ifndef MCTP_TRANSPORT_H
-#define MCTP_TRANSPORT_H
+#ifndef PLDM_MCTP_TRANSPORT_H
+#define PLDM_MCTP_TRANSPORT_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -44,4 +44,4 @@ void pldm_mctp_set_message_tx_callback(
     void* mctp_message_tx_args
 );
 
-#endif // MCTP_TRANSPORT_H
+#endif // PLDM_MCTP_TRANSPORT_H

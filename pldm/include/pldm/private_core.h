@@ -1,8 +1,7 @@
-#ifndef PRIVATE_CORE_H
-#define PRIVATE_CORE_H
+#ifndef PLDM_PRIVATE_CORE_H
+#define PLDM_PRIVATE_CORE_H
 
-struct pldm_terminus_t;
-typedef struct pldm_terminus_t pldm_terminus_t;
+#include <private_terminus.h>
 
 typedef struct pldm_inst_t
 {
@@ -29,20 +28,9 @@ typedef struct pldm_transport_t
     pldm_msg_tx_t message_tx;
     size_t header_size;
     size_t trailer_size;
+    uint32_t max_message_len;
 }
 pldm_transport_t;
-
-typedef struct pldm_terminus_t
-{
-    pldm_transport_t* transport;
-    pldm_inst_t* pldm_inst;
-    pldm_tid_t tid;
-    pldm_tid_changed_t pldm_tid_changed_callback;
-    void* pldm_tid_changed_args;
-    uint32_t next_xfer_handle;
-}
-pldm_terminus_t;
-
 
 void pldm_message_rx(
     pldm_terminus_t* terminus,
@@ -50,4 +38,4 @@ void pldm_message_rx(
     size_t message_len
 );
 
-#endif // PRIVATE_CORE_H
+#endif // PLDM_PRIVATE_CORE_H

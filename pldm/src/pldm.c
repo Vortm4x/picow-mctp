@@ -1,6 +1,6 @@
 #include <pldm/pldm.h>
-#include <pldm/base.h>
-#include <pldm/platform.h>
+#include <pldm/message/base.h>
+#include <pldm/message/platform.h>
 #include <private_core.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +18,7 @@ pldm_inst_t* pldm_init()
     return pldm_inst;
 }
 
+
 void pldm_destroy(
     pldm_inst_t* pldm_inst
 )
@@ -25,91 +26,31 @@ void pldm_destroy(
     free(pldm_inst);
 }
 
-void pldm_register_terminus(
-    pldm_inst_t* pldm_inst,
+
+uint32_t pldm_get_max_message_len(
     pldm_transport_t* transport
-)
-{
-    pldm_terminus_t* terminus = malloc(sizeof(pldm_terminus_t));
-
-    if(terminus != NULL)
-    {
-        terminus->tid = PLDM_TID_UNASSIGNED;
-        terminus->transport = transport;
-        terminus->pldm_inst = pldm_inst;
-
-        pldm_inst->endpoint = terminus;
-
-        transport->endpoint = terminus;
-    }
-}
-
-void pldm_unregister_terminus(
-    pldm_inst_t* pldm_inst,
-    pldm_transport_t* transport   
-)
-{
-    free(pldm_inst->endpoint);
-    pldm_inst->endpoint = NULL;
-    transport->endpoint = NULL;
-}
-
-pldm_tid_t pldm_get_terminus_id(
-    pldm_transport_t* transport   
 )
 {
     if(transport == NULL)
     {
-        return PLDM_TID_UNASSIGNED;
+        return 0;
     }
 
-    if(transport->endpoint == NULL)
-    {
-        return PLDM_TID_UNASSIGNED;
-    }
-
-    return transport->endpoint->tid;
+    return transport->max_message_len;
 }
 
-void pldm_set_terminus_id(
+
+void pldm_set_max_message_len(
     pldm_transport_t* transport,
-    pldm_tid_t tid
+    uint32_t max_message_len
 )
 {
-    if(transport != NULL)
+    if(transport == NULL)
     {
-        pldm_terminus_t* endpoint = transport->endpoint;
-
-        if(endpoint != NULL)
-        {
-            bool tid_changed = (endpoint->tid != tid);
-
-            endpoint->tid = tid;
-
-            if(tid_changed)
-            {
-                endpoint->pldm_tid_changed_callback(
-                    transport,
-                    endpoint->pldm_tid_changed_args
-                );
-            }
-        }
+        return;
     }
-}
 
-void pldm_set_terminus_id_changed_callback(
-    pldm_transport_t* transport,
-    pldm_tid_changed_t pldm_tid_changed_callback,
-    void* pldm_tid_changed_args
-)
-{
-    pldm_terminus_t* endpoint = transport->endpoint;
-
-    if(endpoint != NULL)
-    {
-        endpoint->pldm_tid_changed_callback = pldm_tid_changed_callback;
-        endpoint->pldm_tid_changed_args = pldm_tid_changed_args;
-    }
+    transport->max_message_len = max_message_len;
 }
 
 
@@ -123,6 +64,7 @@ void pldm_set_base_message_rx_callback(
     pldm_inst->base_message_args = base_message_args;
 }
 
+
 void pldm_set_platform_message_rx_callback(
     pldm_inst_t* pldm_inst,
     pldm_message_rx_t platform_message_rx,
@@ -133,6 +75,7 @@ void pldm_set_platform_message_rx_callback(
     pldm_inst->platform_message_args = platform_message_args;
 }
 
+
 void pldm_set_redfish_message_rx_callback(
     pldm_inst_t* pldm_inst,
     pldm_message_rx_t redfish_message_rx,
@@ -142,6 +85,7 @@ void pldm_set_redfish_message_rx_callback(
     pldm_inst->redfish_message_rx = redfish_message_rx;
     pldm_inst->redfish_message_args = redfish_message_args;
 }
+
 
 void pldm_message_rx(
     pldm_terminus_t* terminus,
@@ -162,6 +106,11 @@ void pldm_message_rx(
     {
         case PLDM_TYPE_BASE:
         {
+            if(pldm_inst->base_message_rx == NULL)
+            {
+                break;
+            }
+
             pldm_inst->base_message_rx(
                 pldm_inst,
                 transport,
@@ -174,6 +123,11 @@ void pldm_message_rx(
 
         case PLDM_TYPE_PLATFORM:
         {
+            if(pldm_inst->platform_message_rx == NULL)
+            {
+                break;
+            }
+
             pldm_inst->platform_message_rx(
                 pldm_inst,
                 transport,
@@ -185,7 +139,20 @@ void pldm_message_rx(
         break;
 
         case PLDM_TYPE_REDFISH:
-        {}
+        {
+            if(pldm_inst->redfish_message_rx == NULL)
+            {
+                break;
+            }
+
+            pldm_inst->redfish_message_rx(
+                pldm_inst,
+                transport,
+                message,
+                message_len,
+                pldm_inst->redfish_message_args
+            );            
+        }
         break;
 
         default:
@@ -200,6 +167,7 @@ void pldm_message_rx(
     }
 }
 
+
 void pldm_message_tx(
     pldm_transport_t* transport,
     uint8_t* message,
@@ -212,6 +180,7 @@ void pldm_message_tx(
         message_len
     );
 }
+
 
 void pldm_resp_error_tx(
     pldm_transport_t* transport,
