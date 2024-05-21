@@ -51,7 +51,7 @@
 #define MCTP_BUS_OWNER_EID 0x08
 #define MCTP_LOCAL_EID 0xC8
 
-#define PLDM_MAX_MESSAGE_LEN (16 * 1024)
+#define PLDM_MAX_MESSAGE_LEN 1024
 
 
 bool init_all();
@@ -558,7 +558,7 @@ pldm_pdr_header_t* pdr_create_redfish_resource(
     uint16_t add_res_count = 0;
     memcpy(add_res_count_data, &add_res_count, sizeof(uint16_t));
 
-    pldm_pdr_redfish_res_major_t* major_schema = (pldm_pdr_redfish_res_major_t*)(add_res_count + 1);
+    pldm_pdr_redfish_res_major_t* major_schema = (pldm_pdr_redfish_res_major_t*)(add_res_count_data + 1);
     major_schema->version.version = schema_version;
     major_schema->dict_len = schema_dict_len;
     major_schema->dict_sig = schema_dict_sig;
@@ -630,20 +630,7 @@ int main()
         pldm_terminus_set_id_changed_callback(core_transport, pldm_tid_changed_callback, mctp_terminus_locator);
     }
 
-    {
-        // pldm_pdr_base_accessor_t base_accessor = {
-        //     .terminus_handle = 1,
-        //     .entity_info = {
-        //         .type = {
-        //             .id = PLDM_ENTITY_EXT_ENV,
-        //             .is_logical = false,
-        //         },
-        //         .instance_number = 1,
-        //         .container_id = PLDM_PDR_CONTAINER_PLDM_SYSTEM,
-        //     },
-        //     .accessor_id = pldm_pdr_next_sensor_id(),
-        // };
-        
+    {        
         pldm_pdr_entry_t* dht11_hum_sens_entry = pldm_pdr_repo_add_entry(
             pdr_create_dht11_humidity_sens()
         );

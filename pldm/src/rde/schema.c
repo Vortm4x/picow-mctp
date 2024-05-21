@@ -49,11 +49,7 @@ pldm_rde_schema_t* pldm_rde_schema_init(
 
         schema->dict = dict;
 
-        schema->dict_sig = crc32_calc_block(
-            CRC32_INIT, 
-            (uint8_t*)dict, 
-            dict->dict_size
-        );
+        schema->dict_sig = crc32_calc(0, (uint8_t*)dict, dict->dict_size);
     }
 
     return schema;

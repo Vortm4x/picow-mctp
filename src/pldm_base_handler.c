@@ -224,7 +224,7 @@ void handle_req_get_pldm_ver(
         break;
     }
 
-    uint32_t crc32 = crc32_calc_block(CRC32_INIT, (uint8_t*)resp->versions, versions_len);
+    uint32_t crc32 = crc32_calc(0, (uint8_t*)resp->versions, versions_len);
     memcpy(resp->versions + version_count, &crc32, sizeof(uint32_t));
 
     pldm_message_tx(

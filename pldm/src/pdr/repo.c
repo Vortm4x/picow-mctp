@@ -125,7 +125,7 @@ uint32_t pldm_pdr_repo_get_largest_record_size()
 
 uint32_t pldm_pdr_repo_get_signature()
 {
-    uint32_t crc = CRC32_INIT;
+    uint32_t crc = 0;
 
     if(!pldm_pdr_repo_is_init())
     {
@@ -138,7 +138,7 @@ uint32_t pldm_pdr_repo_get_signature()
     {
         pldm_pdr_header_t* record = pldm_pdr_entry_get_record(curr);
 
-        crc = crc32_calc_block(crc, (uint8_t*)record, pldm_pdr_entry_get_size(curr));
+        crc = crc32_calc(crc, (uint8_t*)record, pldm_pdr_entry_get_size(curr));
 
         curr = pldm_pdr_entry_get_next(curr);
     }

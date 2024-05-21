@@ -158,6 +158,21 @@ void pldm_redfish_message_rx_callback(
         }
         break;
 
+        case PLDM_REDFISH_CMD_RDE_MULTIPART_RECEIVE:
+        {
+            if(base_header->request)
+            {
+                handle_req_rde_multipart_receive(
+                    transport,
+                    message,
+                    message_len,
+                    args
+                );
+            }
+        }
+        break;
+
+
         default:
         {
             if(base_header->request)
@@ -428,8 +443,7 @@ void handle_req_get_schema_uri(
         curr_frag->len = strlen(schema_uri_frags[i]) + 1;
         memcpy(curr_frag->data, schema_uri_frags[i], curr_frag->len);
 
-        curr_frag += 1;
-        curr_frag = (var_str_t*)((uint8_t*)curr_frag + curr_frag->len);
+        curr_frag = (var_str_t*)(curr_frag->data + curr_frag->len);
     }
 
     pldm_message_tx(
@@ -915,7 +929,7 @@ void handle_req_rde_multipart_receive(
         }
         else
         {
-            uint32_t crc = crc32_calc_block(0, xfer_data, xfer_data_len);
+            uint32_t crc = crc32_calc(0, xfer_data, xfer_data_len);
 
             memcpy(resp->data + resp->data_len, &crc, sizeof(uint32_t));
 

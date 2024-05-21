@@ -57,7 +57,7 @@ bool pldm_rde_provider_is_init()
 
 uint32_t pldm_rde_provider_get_signature()
 {
-    uint32_t crc = CRC32_INIT;
+    uint32_t crc = 0;
 
     if(!pldm_rde_provider_is_init())
     {
@@ -71,7 +71,9 @@ uint32_t pldm_rde_provider_get_signature()
     {
         pldm_pdr_header_t* pdr = pldm_rde_resource_get_pdr(curr);
 
-        crc = crc32_calc_block(crc, (uint8_t*)pdr, pldm_pdr_get_size(pdr));
+        crc = crc32_calc(crc, (uint8_t*)pdr, pldm_pdr_get_size(pdr));
+
+        curr = pldm_rde_resource_get_next(curr);
     }
 
     
@@ -84,10 +86,11 @@ uint32_t pldm_rde_provider_get_signature()
         );
     
         pldm_rde_resource_t* dict_match = rde_provider->first_resource;
+        uint32_t dict_match_sig = 0;
 
         while (dict_match != curr)
         {
-            uint32_t dict_match_sig = pldm_rde_schema_get_dict_sig(
+            dict_match_sig = pldm_rde_schema_get_dict_sig(
                 pldm_rde_resource_get_schema(dict_match)
             );
             
@@ -95,16 +98,20 @@ uint32_t pldm_rde_provider_get_signature()
             {
                 break;
             }
+
+            dict_match = pldm_rde_resource_get_next(dict_match);
         }
 
-        if(dict_match != curr)
+        if(dict_sig != dict_match_sig)
         {
             bej_dict_header_t* dict = pldm_rde_schema_get_dict(
                 pldm_rde_resource_get_schema(curr)
             );
 
-            crc = crc32_calc_block(crc, (uint8_t*)dict, dict->dict_size);
+            crc = crc32_calc(crc, (uint8_t*)dict, dict->dict_size);
         }
+
+        curr = pldm_rde_resource_get_next(curr);
     }
 
     return crc;

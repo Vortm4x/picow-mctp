@@ -55,31 +55,25 @@ static const uint8_t crc8_table[] = {
 };
 
 
-uint32_t crc32_calc_byte(uint32_t crc, uint8_t byte)
+uint32_t crc32_calc(uint32_t crc, uint8_t block[], size_t block_len)
 {
-    return (crc >> 8) ^ crc32_table[(crc ^ byte) & 0xFF];
-}
+    crc ^= 0xFFFFFFFF;
 
-uint32_t crc32_calc_block(uint32_t crc, uint8_t block[], size_t block_len)
-{
     for(size_t i = 0; i < block_len; ++i)
 	{
-		crc = crc32_calc_byte(crc, block[i]);
+		crc = crc32_table[(crc ^ block[i]) & 0xFF] ^ (crc >> 8);
 	}
+
+    crc ^= 0xFFFFFFFF;
 
     return crc;
 }
 
-uint8_t crc8_calc_byte(uint8_t crc, uint8_t data)
-{
-    return crc8_table[crc ^ data];
-}
-
-uint8_t crc8_calc_block(uint8_t crc, uint8_t block[], size_t block_len)
+uint8_t crc8_calc(uint8_t crc, uint8_t block[], size_t block_len)
 {
     for (size_t i = 0; i < block_len; ++i)
     {
-        crc = crc8_calc_byte(crc, block[i]);
+        crc = crc8_table[crc ^ block[i]];
     }
     
     return crc;

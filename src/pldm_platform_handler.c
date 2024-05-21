@@ -360,7 +360,7 @@ void handle_req_pdr_repo_get(
 
     if(resp->xfer_pos.is_end)
     {
-        uint8_t crc = crc8_calc_block(0, record_data, record_data_len);
+        uint8_t crc = crc8_calc(0, record_data, record_data_len);
         memcpy(resp->record_data_part + resp->record_len, &crc, sizeof(uint8_t));
     }
     else
