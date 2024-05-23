@@ -708,7 +708,8 @@ int main()
             );
 
             pldm_rde_provider_add_resource(
-                (bej_encoding_t*)picow_chassis_data,
+                picow_chassis_data,
+                sizeof(picow_chassis_data),
                 pldm_pdr_entry_get_record(pdr_repo_entry),
                 schema_chassis
             );
@@ -733,7 +734,8 @@ int main()
             );
 
             pldm_rde_provider_add_resource(
-                (bej_encoding_t*)picow_sensor_collection_data,
+                picow_sensor_collection_data,
+                sizeof(picow_sensor_collection_data),
                 pldm_pdr_entry_get_record(pdr_repo_entry),
                 schema_sensor_collection
             );
@@ -759,7 +761,8 @@ int main()
             );
 
             pldm_rde_provider_add_resource(
-                (bej_encoding_t*)dht11_rh_data,
+                dht11_rh_data,
+                sizeof(dht11_rh_data),
                 pldm_pdr_entry_get_record(pdr_repo_entry),
                 schema_sensor
             );
@@ -784,7 +787,8 @@ int main()
             );
 
             pldm_rde_provider_add_resource(
-                (bej_encoding_t*)dht11_temperature_data,
+                dht11_temperature_data,
+                sizeof(dht11_temperature_data),
                 pldm_pdr_entry_get_record(pdr_repo_entry),
                 schema_sensor
             );

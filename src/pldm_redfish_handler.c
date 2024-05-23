@@ -323,7 +323,7 @@ void handle_req_get_schema_dict(
         return pldm_resp_error_tx(
             transport,
             base_header,
-            PLDM_CMD_CC_ERROR_INVALID_DATA //ERROR_UNSUPPORTED
+            PLDM_CMD_CC_ERROR_UNSUPPORTED
         );
     }
 
@@ -334,7 +334,7 @@ void handle_req_get_schema_dict(
         return pldm_resp_error_tx(
             transport,
             base_header,
-            PLDM_CMD_CC_ERROR_INVALID_DATA //ERROR_NO_SUCH_RESOURCE
+            PLDM_CMD_CC_ERROR_NO_SUCH_RESOURCE
         );   
     }
 
@@ -395,7 +395,7 @@ void handle_req_get_schema_uri(
         return pldm_resp_error_tx(
             transport,
             base_header,
-            PLDM_CMD_CC_ERROR_INVALID_DATA //ERROR_UNSUPPORTED
+            PLDM_CMD_CC_ERROR_UNSUPPORTED
         );
     }
 
@@ -406,8 +406,8 @@ void handle_req_get_schema_uri(
         return pldm_resp_error_tx(
             transport,
             base_header,
-            PLDM_CMD_CC_ERROR_INVALID_DATA  // ERROR_NO_SUCH_RESOURCE  
-        );   
+            PLDM_CMD_CC_ERROR_NO_SUCH_RESOURCE  
+        );
     }
 
     pldm_rde_schema_t* schema = pldm_rde_resource_get_schema(resource);

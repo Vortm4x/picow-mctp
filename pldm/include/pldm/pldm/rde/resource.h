@@ -19,7 +19,7 @@ typedef struct __attribute__ ((__packed__)) pldm_rde_resource_etag_t
 pldm_rde_resource_etag_t;
 
 
-bej_encoding_t* pldm_rde_resource_get_encoding(
+bej_encoding_header_t* pldm_rde_resource_get_encoding(
     pldm_rde_resource_t* resource
 );
 

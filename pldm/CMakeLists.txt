@@ -17,6 +17,7 @@ add_library (${PROJECT_NAME} STATIC
     src/rde/provider.c
     src/rde/operation.c
     src/rde/schema.c
+    src/rde/unpacked.c
 )
 
 target_link_libraries(${PROJECT_NAME} 

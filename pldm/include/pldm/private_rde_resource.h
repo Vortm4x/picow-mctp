@@ -3,9 +3,9 @@
 
 #include <pldm/rde/resource.h>
 
-
 pldm_rde_resource_t* pldm_rde_resource_init(
-    bej_encoding_t* encoding,
+    uint8_t encoding_data[],
+    size_t encoding_data_size,
     pldm_pdr_header_t* pdr,
     pldm_rde_schema_t* schema
 );

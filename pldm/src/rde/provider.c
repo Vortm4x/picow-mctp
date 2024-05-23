@@ -119,7 +119,8 @@ uint32_t pldm_rde_provider_get_signature()
 
 
 pldm_rde_resource_t* pldm_rde_provider_add_resource(
-    bej_encoding_t* encoding,
+    uint8_t encoding_data[],
+    size_t encoding_data_size,
     pldm_pdr_header_t* pdr,
     pldm_rde_schema_t* schema
 )
@@ -129,7 +130,12 @@ pldm_rde_resource_t* pldm_rde_provider_add_resource(
         return NULL;
     }
 
-    pldm_rde_resource_t* new_resource = pldm_rde_resource_init(encoding, pdr, schema);
+    pldm_rde_resource_t* new_resource = pldm_rde_resource_init(
+        encoding_data, 
+        encoding_data_size, 
+        pdr, 
+        schema
+    );
 
     if(new_resource == NULL)
     {

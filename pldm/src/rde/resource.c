@@ -1,13 +1,13 @@
 #include <pldm/rde/resource.h>
 #include <private_rde_resource.h>
+#include <pldm/rde/unpacked.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
-
 typedef struct pldm_rde_resource_t
 {
-    bej_encoding_t* encoding;
+    bej_encoding_unpacked_t* encoding;
     pldm_pdr_header_t* pdr; 
     pldm_rde_schema_t* schema;
     pldm_rde_resource_t* next;
@@ -16,12 +16,13 @@ pldm_rde_resource_t;
 
 
 pldm_rde_resource_t* pldm_rde_resource_init(
-    bej_encoding_t* encoding,
+    uint8_t encoding_data[],
+    size_t encoding_data_size,
     pldm_pdr_header_t* pdr,
     pldm_rde_schema_t* schema
 )
 {
-    if(encoding == NULL 
+    if(encoding_data == NULL 
     || pdr == NULL
     || schema == NULL)
     {
@@ -34,7 +35,11 @@ pldm_rde_resource_t* pldm_rde_resource_init(
     {
         memset(resource, 0, sizeof(pldm_rde_resource_t));
 
-        resource->encoding = encoding;
+        resource->encoding = bej_encoding_unpack(
+            encoding_data,
+            encoding_data_size,
+            (uint8_t*)pldm_rde_schema_get_dict(schema)
+        );
         resource->pdr = pdr;
         resource->schema = schema;
     }
@@ -51,7 +56,7 @@ void pldm_rde_resource_destroy(
 }
 
 
-bej_encoding_t* pldm_rde_resource_get_encoding(
+bej_encoding_header_t* pldm_rde_resource_get_encoding(
     pldm_rde_resource_t* resource
 )
 {
@@ -60,7 +65,7 @@ bej_encoding_t* pldm_rde_resource_get_encoding(
         return NULL;
     }
 
-    return resource->encoding;
+    return (bej_encoding_header_t*)resource->encoding;
 }
 
 uint32_t pldm_rde_resource_get_encoding_size(
@@ -74,13 +79,13 @@ uint32_t pldm_rde_resource_get_encoding_size(
 
     uint32_t encoding_size = 0;
 
-    bej_s_tuple_t* tuple_s = (bej_s_tuple_t*)resource->encoding->tuple_data;
-    bej_f_tuple_t* tuple_f = (bej_f_tuple_t*)(tuple_s->seq.data + tuple_s->seq.len);
-    bej_l_tuple_t* tuple_l = (bej_l_tuple_t*)(tuple_f + 1);
+    // bej_s_tuple_t* tuple_s = (bej_s_tuple_t*)(resource->encoding + 1);
+    // bej_f_tuple_t* tuple_f = (bej_f_tuple_t*)(tuple_s->seq.data + tuple_s->seq.len);
+    // bej_l_tuple_t* tuple_l = (bej_l_tuple_t*)(tuple_f + 1);
 
-    memcpy(&encoding_size, tuple_l->len.data, tuple_l->len.len);
+    // memcpy(&encoding_size, tuple_l->len.data, tuple_l->len.len);
 
-    return encoding_size + sizeof(bej_encoding_t);
+    return encoding_size + sizeof(bej_encoding_header_t);
 }
 
 pldm_pdr_header_t* pldm_rde_resource_get_pdr(
