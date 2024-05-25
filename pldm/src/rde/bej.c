@@ -1,62 +1,33 @@
-#include <pldm/rde/unpacked.h>
 #include <pldm/rde/bej.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 
-typedef uint64_t nnint_t_unpacked_t;
-
-typedef struct bej_s_tuple_unpacked_t
-{
-    nnint_t_unpacked_t seq : 63;
-    bool annotation : 1;
-}
-bej_s_tuple_unpacked_t;
-
-typedef bej_f_tuple_t bej_f_tuple_unpacked_t;
-
-typedef nnint_t_unpacked_t bej_l_tuple_unpacked_t;
-
-typedef struct bej_sfl_tuple_unpacked_t
-{
-    bej_s_tuple_unpacked_t s_tuple;
-    bej_f_tuple_unpacked_t f_tuple;
-    bej_l_tuple_unpacked_t l_tuple;
-}
-bej_sfl_tuple_unpacked_t;
-
-typedef struct bej_encoding_unpacked_t
-{
-    bej_sfl_tuple_unpacked_t sfl_tuple;
-    void* v_tuple;
-}
-bej_encoding_unpacked_t;
-
-
-typedef struct bej_collection_t
-{
-    nnint_t_unpacked_t len;
-    bej_encoding_unpacked_t** entries;
-}
-bej_collection_t;
-
-
-static bej_encoding_unpacked_t* bej_encoding_init();
+static bej_encoding_t* bej_encoding_init();
 
 static void bej_collection_destroy(
     bej_collection_t* collection
 );
 
 static bej_collection_t* bej_collection_init(
-    nnint_t_unpacked_t len
+    nnint_t len
 );
 
 static void bej_collection_destroy(
     bej_collection_t* collection
 );
 
-static bej_encoding_unpacked_t* bej_value_unpack(
+static bej_value_t* bej_value_init(
+    nnint_t size
+);
+
+static void bej_value_destroy(
+    bej_value_t* value
+);
+
+
+static bej_encoding_t* bej_value_unpack(
     uint8_t encoding_data[],
     size_t* encoding_offset,
     size_t encoding_stream_size,
@@ -69,13 +40,13 @@ static bej_encoding_unpacked_t* bej_value_unpack(
 static void bej_sfl_tuple_unpack(
     uint8_t encoding_data[],
     size_t* encoding_offset,
-    bej_sfl_tuple_unpacked_t* sfl_tuple
+    bej_sfl_tuple_t* sfl_tuple
 );
 
 static void bej_nnint_unpack(
     uint8_t encoding_data[],
     size_t* encoding_offset,
-    nnint_t_unpacked_t* nnint
+    nnint_t* nnint
 );
 
 static void bej_data_unpack(
@@ -90,14 +61,20 @@ static bej_dict_entry_header* bej_dict_get_child_entry_headers(
     uint8_t schema_dict[]
 );
 
+static bej_dict_entry_header* bej_dict_find_entry_header(
+    bej_dict_entry_header entry_headers[],
+    nnint_t entry_headers_count,
+    nnint_t seq_num
+);
 
-bej_encoding_unpacked_t* bej_encoding_init()
+
+bej_encoding_t* bej_encoding_init()
 {
-    bej_encoding_unpacked_t* encoding = malloc(sizeof(bej_encoding_unpacked_t));
+    bej_encoding_t* encoding = malloc(sizeof(bej_encoding_t));
 
     if(encoding != NULL)
     {
-        memset(encoding, 0, sizeof(bej_encoding_unpacked_t));
+        memset(encoding, 0, sizeof(bej_encoding_t));
     }
 
     return encoding;
@@ -105,7 +82,7 @@ bej_encoding_unpacked_t* bej_encoding_init()
 
 
 void bej_encoding_destroy(
-    bej_encoding_unpacked_t* encoding
+    bej_encoding_t* encoding
 )
 {
     if(encoding == NULL)
@@ -113,15 +90,16 @@ void bej_encoding_destroy(
         return;
     }
 
-    switch (encoding->sfl_tuple.f_tuple.bej_type)
+    switch (encoding->format.bej_type)
     {
         case BEJ_TYPE_SET:
         case BEJ_TYPE_ARRAY:
         {
-            bej_collection_destroy(encoding->v_tuple);
+            bej_collection_destroy(encoding->collection);
         }
         break;
 
+        case BEJ_TYPE_NULL:
         case BEJ_TYPE_INTEGER:
         case BEJ_TYPE_ENUM:
         case BEJ_TYPE_STRING:
@@ -129,9 +107,9 @@ void bej_encoding_destroy(
         case BEJ_TYPE_BOOLEAN:
         case BEJ_TYPE_BYTE_STRING:
         {
-            free(encoding->v_tuple);
+            bej_value_destroy(encoding->value);
         }
-    
+        
         default:
         {}
         break;
@@ -140,7 +118,7 @@ void bej_encoding_destroy(
 
 
 bej_collection_t* bej_collection_init(
-    nnint_t_unpacked_t len
+    nnint_t len
 )
 {
     bej_collection_t* collection = malloc(sizeof(bej_collection_t));
@@ -152,7 +130,7 @@ bej_collection_t* bej_collection_init(
         if(len > 0)
         {
             collection->len = len;
-            collection->entries = calloc(len, sizeof(bej_encoding_unpacked_t*));
+            collection->entries = calloc(len, sizeof(bej_encoding_t*));
         }
     }
 
@@ -169,20 +147,62 @@ void bej_collection_destroy(
         return;
     }
 
-    for(nnint_t_unpacked_t i = 0; i < collection->len; ++i)
+    for(nnint_t i = 0; i < collection->len; ++i)
     {
         bej_encoding_destroy(collection->entries[i]);
     }
 }
 
+static bej_value_t* bej_value_init(
+    nnint_t size
+)
+{
+    bej_value_t* value = malloc(sizeof(bej_value_t));
 
-bej_encoding_unpacked_t* bej_encoding_unpack(
+    if(value != NULL)
+    {
+        memset(value, 0, sizeof(bej_value_t));
+
+        if(size > 0)
+        {
+            value->size = size;
+            value->data = calloc(size, sizeof(uint8_t));
+        }
+    }
+
+    return value;
+}
+
+static void bej_value_destroy(
+    bej_value_t* value
+)
+{
+    if(value == NULL)
+    {
+        return;
+    }
+
+    free(value->data);
+    free(value);
+}
+
+static void bej_value_pack(
+    FILE* bej_stream,
+    bej_encoding_t* encoding
+);
+
+static void bej_nnint_pack(
+    FILE* bej_stream,
+    nnint_t* nnint
+);
+
+
+bej_encoding_t* bej_encoding_unpack(
     uint8_t encoding_data[],
     size_t encoding_data_size,
     uint8_t major_schema_dict[]
 )
 {
-
     bej_encoding_header_t* bej_header = (bej_encoding_header_t*)encoding_data;
     size_t encoding_offset = sizeof(bej_encoding_header_t);
 
@@ -199,7 +219,7 @@ bej_encoding_unpacked_t* bej_encoding_unpack(
 
     bej_dict_entry_header* entry_header = (bej_dict_entry_header*)(major_schema_dict + sizeof(bej_dict_header_t));
 
-    bej_encoding_unpacked_t* encoding = bej_value_unpack(
+    bej_encoding_t* encoding = bej_value_unpack(
         encoding_data,
         &encoding_offset,
         encoding_data_size,
@@ -209,11 +229,15 @@ bej_encoding_unpacked_t* bej_encoding_unpack(
         false
     );
 
+    size_t len = 0;
+    uint8_t* data = bej_encoding_pack(encoding, &len);
+    free(data);
+
     return encoding;
 }
 
 
-bej_encoding_unpacked_t* bej_value_unpack(
+bej_encoding_t* bej_value_unpack(
     uint8_t encoding_data[],
     size_t* encoding_offset,
     size_t encoding_stream_size,
@@ -223,81 +247,84 @@ bej_encoding_unpacked_t* bej_value_unpack(
     bool is_array_entry
 )
 {
-    bej_sfl_tuple_unpacked_t sfl_tuple = {};
-
-    bej_encoding_unpacked_t* encoding = bej_encoding_init();
+    bej_sfl_tuple_t sfl_tuple = {};
     bej_sfl_tuple_unpack(encoding_data, encoding_offset, &sfl_tuple);
 
-    bej_dict_entry_header* value_entry = NULL;
+    bej_dict_entry_header* curr_entry_header = NULL;
 
     if(is_array_entry)
     {
-        value_entry = &entry_headers[0];
+        curr_entry_header = &entry_headers[0];
     }
     else
     {
-        if(sfl_tuple.s_tuple.seq < entry_headers_count)
-        {
-            value_entry = &entry_headers[sfl_tuple.s_tuple.seq];
-        }
+        curr_entry_header = bej_dict_find_entry_header(
+            entry_headers,
+            entry_headers_count,
+            sfl_tuple.s_tuple.seq
+        );
     }
 
-    if(value_entry == NULL)
+    if(curr_entry_header == NULL)
     {
         return NULL;
     }
     
-    if(memcmp(&value_entry, &sfl_tuple.f_tuple, sizeof(bej_f_tuple_unpacked_t)) != 0)
+    if(curr_entry_header->format.bej_type != sfl_tuple.f_tuple.bej_type)
     {
         return NULL;        
     }
+
+    bej_encoding_t* encoding = bej_encoding_init();
+    memcpy(&encoding->format, &sfl_tuple.f_tuple, sizeof(bej_f_tuple_t));
+    memcpy(&encoding->seq_num, &sfl_tuple.s_tuple, sizeof(bej_s_tuple_t));
 
     switch (sfl_tuple.f_tuple.bej_type)
     {
         case BEJ_TYPE_SET:
         {
-            nnint_t_unpacked_t set_len;
+            nnint_t set_len;
             bej_nnint_unpack(encoding_data, encoding_offset, &set_len);
 
             bej_collection_t* set = bej_collection_init(set_len);
 
             bej_dict_entry_header* child_entry_headers = bej_dict_get_child_entry_headers(
-                value_entry,
+                curr_entry_header,
                 major_schema_dict
             );
 
-            for(nnint_t_unpacked_t j = 0; j < set->len; ++j)
+            for(nnint_t i = 0; i < set->len; ++i)
             {
-                set->entries[j] = bej_value_unpack(
+                set->entries[i] = bej_value_unpack(
                     encoding_data, 
                     encoding_offset, 
                     encoding_stream_size,
                     major_schema_dict,
                     child_entry_headers,
-                    value_entry->child_count,
+                    curr_entry_header->child_count,
                     false
                 );
             }
 
-            encoding->v_tuple = set;
+            encoding->collection = set;
         }
         break;
 
         case BEJ_TYPE_ARRAY:
         {
-            nnint_t_unpacked_t array_len;
+            nnint_t array_len;
             bej_nnint_unpack(encoding_data, encoding_offset, &array_len);
 
             bej_collection_t* array = bej_collection_init(array_len);
 
             bej_dict_entry_header* child_entry_headers = bej_dict_get_child_entry_headers(
-                value_entry, 
+                curr_entry_header, 
                 major_schema_dict
             );
             
-            for(nnint_t_unpacked_t j = 0; j < array->len; ++j)
+            for(nnint_t i = 0; i < array->len; ++i)
             {
-                array->entries[j] = bej_value_unpack(
+                array->entries[i] = bej_value_unpack(
                     encoding_data, encoding_offset,
                     encoding_stream_size,
                     major_schema_dict,
@@ -307,16 +334,11 @@ bej_encoding_unpacked_t* bej_value_unpack(
                 );
             }
 
-            encoding->v_tuple = array;
+            encoding->collection = array;
         }
         break;
 
         case BEJ_TYPE_NULL:
-        {
-            encoding->v_tuple = NULL;
-        }
-        break;
-
         case BEJ_TYPE_INTEGER:
         case BEJ_TYPE_ENUM:
         case BEJ_TYPE_STRING:
@@ -324,26 +346,23 @@ bej_encoding_unpacked_t* bej_value_unpack(
         case BEJ_TYPE_BOOLEAN:
         case BEJ_TYPE_BYTE_STRING:
         {
-            if(encoding->sfl_tuple.l_tuple > 0)
-            {
-                encoding->v_tuple = malloc(encoding->sfl_tuple.l_tuple);
+            encoding->value = bej_value_init(sfl_tuple.l_tuple);
 
+            if(encoding->value->size > 0)
+            {
                 bej_data_unpack(
                     encoding_data, 
                     encoding_offset, 
-                    encoding->v_tuple,
-                    encoding->sfl_tuple.l_tuple
+                    encoding->value->data,
+                    sfl_tuple.l_tuple
                 );
-            }
-            else
-            {
-                encoding->v_tuple = NULL;
             }
         }
         break;
 
         default:
         {
+            bej_encoding_destroy(encoding);
             encoding = NULL;
         }
         break;
@@ -356,15 +375,15 @@ bej_encoding_unpacked_t* bej_value_unpack(
 void bej_sfl_tuple_unpack(
     uint8_t encoding_data[],
     size_t* encoding_offset,
-    bej_sfl_tuple_unpacked_t* sfl_tuple
+    bej_sfl_tuple_t* sfl_tuple
 )
 {
-    memset(sfl_tuple, 0, sizeof(bej_sfl_tuple_unpacked_t));
+    memset(sfl_tuple, 0, sizeof(bej_sfl_tuple_t));
 
     bej_nnint_unpack(
         encoding_data, 
         encoding_offset, 
-        (nnint_t_unpacked_t*)&sfl_tuple->s_tuple
+        &sfl_tuple->s_tuple.nnint
     );
 
     bej_data_unpack(
@@ -377,7 +396,7 @@ void bej_sfl_tuple_unpack(
     bej_nnint_unpack(
         encoding_data, 
         encoding_offset, 
-        (nnint_t_unpacked_t*)&sfl_tuple->l_tuple
+        &sfl_tuple->l_tuple
     );
 }
 
@@ -385,10 +404,10 @@ void bej_sfl_tuple_unpack(
 void bej_nnint_unpack(
     uint8_t encoding_data[],
     size_t* encoding_offset,
-    nnint_t_unpacked_t* nnint
+    nnint_t* nnint
 )
 {
-    memset(nnint, 0, sizeof(nnint_t_unpacked_t));
+    memset(nnint, 0, sizeof(nnint_t));
 
     uint8_t len = 0;
 
@@ -431,43 +450,117 @@ bej_dict_entry_header* bej_dict_get_child_entry_headers(
 }
 
 
-/*
-bej_sflv_tuple_t* bej_sflv_tuple_init(
-    uint8_t* encoding_data
+bej_dict_entry_header* bej_dict_find_entry_header(
+    bej_dict_entry_header entry_headers[],
+    nnint_t entry_headers_count,
+    nnint_t seq_num
 )
 {
-    bej_sflv_tuple_t* sflv_tuple = malloc(sizeof(bej_sflv_tuple_t));
-
-    if(sflv_tuple != NULL)
+    for(nnint_t i = 0; i < entry_headers_count; ++i)
     {
-        memset(sflv_tuple, 0, sizeof(bej_sflv_tuple_t));
+        if(entry_headers[i].sequence == seq_num)
+        {
+            return &entry_headers[i];
+        }
+    }
+    
+    return NULL;
+}
 
-        bej_s_tuple_t* s_tuple = (bej_s_tuple_t*)(encoding_data);
-        bej_f_tuple_t* f_tuple = (bej_f_tuple_t*)(s_tuple->seq.data + s_tuple->seq.len);
-        bej_l_tuple_t* l_tuple = (bej_l_tuple_t*)(f_tuple + 1);
-        uint8_t* v_tuple = (uint8_t*)(l_tuple->len.data + l_tuple->len.len);
+
+uint8_t* bej_encoding_pack(
+    bej_encoding_t* encoding,
+    size_t* data_len
+)
+{
+    uint8_t* data = NULL;
+    FILE* bej_stream = open_memstream((char**)(&data), data_len);
+
+    bej_encoding_header_t encoding_header = {
+        .schema_class = RDE_SCHEMA_CLASS_MAJOR,
+        .version.version = BEJ_VERSION_1_1_0,
+    };
+
+    fwrite(&encoding_header, sizeof(bej_encoding_header_t), 1, bej_stream);
+    bej_value_pack(bej_stream, encoding);
+    fclose(bej_stream);
+
+    return data;
+}
 
 
+void bej_value_pack(
+    FILE* bej_stream,
+    bej_encoding_t* encoding
+)
+{
+    bej_nnint_pack(bej_stream, &encoding->seq_num.nnint);
+    fwrite(&encoding->format, sizeof(bej_f_tuple_t), 1, bej_stream);
 
+    switch (encoding->format.bej_type)
+    {
+        case BEJ_TYPE_SET:
+        case BEJ_TYPE_ARRAY:
+        {
+            uint8_t* data = NULL;
+            size_t data_len = 0;
+
+            FILE* nested_stream = open_memstream((char**)&data, &data_len);
+            bej_nnint_pack(nested_stream, &encoding->collection->len);
+
+            for(nnint_t i = 0; i < encoding->collection->len; ++i)
+            {
+                bej_value_pack(
+                    nested_stream,
+                    encoding->collection->entries[i]
+                );
+            }
+
+            fclose(nested_stream);
+
+            nnint_t value_len = data_len;
+            bej_nnint_pack(bej_stream, &value_len);
+            
+            fwrite(data, sizeof(uint8_t), data_len, bej_stream);
+        }
+        break;
+
+        case BEJ_TYPE_NULL:
+        case BEJ_TYPE_INTEGER:
+        case BEJ_TYPE_ENUM:
+        case BEJ_TYPE_STRING:
+        case BEJ_TYPE_REAL:
+        case BEJ_TYPE_BOOLEAN:
+        case BEJ_TYPE_BYTE_STRING:
+        {
+            bej_nnint_pack(bej_stream, &encoding->value->size);
+            fwrite(encoding->value->data, encoding->value->size, 1, bej_stream);
+        }
+        break;
+    
+        default:
+        {}
+        break;
+    }
+}
+
+
+void bej_nnint_pack(
+    FILE* bej_stream,
+    nnint_t* nnint
+)
+{
+    uint8_t* data = (uint8_t*)nnint;
+    uint8_t len = sizeof(nnint_t);
+
+    for(; len > 1; --len)
+    {
+        if(data[len - 1] != 0)
+        {
+            break;
+        }
     }
 
-    return sflv_tuple;
+    fwrite(&len, sizeof(uint8_t), 1, bej_stream);
+    fwrite(data, sizeof(uint8_t), len, bej_stream);
 }
-
-bej_sflv_tuple_t* bej_sflv_tuple_destroy(
-    bej_sflv_tuple_t* sflv_tuple
-)
-{
-
-}
-*/
-
-// bej_sflv_tuple_t* bej_encoding_unpack(
-//     uint8_t encoding_data[]
-// )
-// {
-//     bej_s_tuple_t* s_tuple = (bej_s_tuple_t*)(encoding_data);
-//     bej_f_tuple_t* f_tuple = (bej_f_tuple_t*)(s_tuple->seq.data + s_tuple->seq.len);
-//     bej_l_tuple_t* l_tuple = (bej_l_tuple_t*)(f_tuple + 1);
-//     uint8_t* v_tuple = (uint8_t*)(l_tuple->len.data + l_tuple->len.len);
-// }

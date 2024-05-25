@@ -1,13 +1,13 @@
 #include <pldm/rde/resource.h>
 #include <private_rde_resource.h>
-#include <pldm/rde/unpacked.h>
+#include <pldm/rde/bej.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
 typedef struct pldm_rde_resource_t
 {
-    bej_encoding_unpacked_t* encoding;
+    bej_encoding_t* encoding;
     pldm_pdr_header_t* pdr; 
     pldm_rde_schema_t* schema;
     pldm_rde_resource_t* next;
@@ -56,7 +56,7 @@ void pldm_rde_resource_destroy(
 }
 
 
-bej_encoding_header_t* pldm_rde_resource_get_encoding(
+bej_encoding_t* pldm_rde_resource_get_encoding(
     pldm_rde_resource_t* resource
 )
 {
@@ -65,7 +65,7 @@ bej_encoding_header_t* pldm_rde_resource_get_encoding(
         return NULL;
     }
 
-    return (bej_encoding_header_t*)resource->encoding;
+    return resource->encoding;
 }
 
 uint32_t pldm_rde_resource_get_encoding_size(
