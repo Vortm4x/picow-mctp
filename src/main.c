@@ -25,16 +25,17 @@
 #include <pldm/rde/provider.h>
 #include <pldm/rde/resource.h>
 
-#include "dump.h"
-#include "control_handler.h"
-#include "pldm_base_handler.h"
-#include "pldm_platform_handler.h"
-#include "pldm_redfish_handler.h"
+#include "responder/dump.h"
+#include "responder/mctp/control_handler.h"
+#include "responder/pldm/base_handler.h"
+#include "responder/pldm/platform_handler.h"
+#include "responder/pldm/redfish_handler.h"
+
 #include "dht11/driver.h"
-#include "dict/chassis.h"
-#include "dict/sensor_collection.h"
-#include "dict/sensor.h"
-#include "rde_resources.h"
+#include "redfish/dict/chassis.h"
+#include "redfish/dict/sensor_collection.h"
+#include "redfish/dict/sensor.h"
+#include "redfish/resource.h"
 
 
 #define UART_INDEX 1

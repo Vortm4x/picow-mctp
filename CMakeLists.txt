@@ -19,12 +19,14 @@ add_subdirectory(pldm)
 
 add_executable(${PROJECT_NAME}
     src/main.c
-    src/dump.c
-    src/control_handler.c
-    src/pldm_base_handler.c
-    src/pldm_platform_handler.c
-    src/pldm_redfish_handler.c
+    
     src/dht11/driver.c
+
+    src/responder/dump.c
+    src/responder/mctp/control_handler.c
+    src/responder/pldm/base_handler.c
+    src/responder/pldm/platform_handler.c
+    src/responder/pldm/redfish_handler.c
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE
     pico_stdlib

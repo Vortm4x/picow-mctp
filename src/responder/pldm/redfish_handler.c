@@ -1,5 +1,5 @@
-#include "pldm_redfish_handler.h"
-#include "dump.h"
+#include "redfish_handler.h"
+#include "../dump.h"
 #include <pldm/pldm.h>
 #include <pldm/util.h>
 #include <pldm/message/redfish.h>

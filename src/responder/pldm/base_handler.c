@@ -1,5 +1,5 @@
-#include "pldm_base_handler.h"
-#include "dump.h"
+#include "base_handler.h"
+#include "../dump.h"
 #include <pldm/util.h>
 #include <stdlib.h>
 #include <string.h>

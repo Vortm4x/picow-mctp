@@ -1,5 +1,5 @@
-#include "pldm_platform_handler.h"
-#include "dump.h"
+#include "platform_handler.h"
+#include "../dump.h"
 
 #include <pldm/pldm.h>
 #include <pldm/terminus.h>
