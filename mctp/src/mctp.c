@@ -434,7 +434,7 @@ void mctp_transaction_rx(
                 mctp_header->message_tag,
                 mctp_header->tag_owner,
                 message,
-                MCTP_PAYLOAD_SIZE(message_ctx->message_len)
+                message_ctx->message_len
             );
 
             mctp_message_ctx_destroy(message_ctx);
