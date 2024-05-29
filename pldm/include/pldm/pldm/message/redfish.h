@@ -4,13 +4,15 @@
 #include <pldm/pldm.h>
 
 #define PLDM_REDFISH_MIN_XFER_LEN 64
-
+#define PLDM_REDFISH_OPER_COMPLETION_TIME_UNKNOWN 0xFFFFFFFF
+#define PLDM_REDFISH_QUERY_OPT_NOT_SUPPLIED 0xFFFF
 
 typedef enum __attribute__ ((__packed__)) pldm_rde_xfer_oper_t
 {
-    RDE_XFER_OPER_FIRST = 0,
-    RDE_XFER_OPER_NEXT  = 1,
-    RDE_XFER_OPER_ABORT = 2,
+    RDE_XFER_OPER_FIRST     = 0,
+    RDE_XFER_OPER_NEXT      = 1,
+    RDE_XFER_OPER_ABORT     = 2,
+    RDE_XFER_OPER_COMPLETE  = 3,
 }
 pldm_rde_xfer_oper_t;
 
@@ -311,6 +313,29 @@ typedef struct __attribute__ ((__packed__)) pldm_resp_rde_operation_enumerate_t
     pldm_rde_oper_info_t operations[];
 }
 pldm_resp_rde_operation_enumerate_t;
+
+
+// PLDM_REDFISH_CMD_RDE_MULTIPART_SEND
+
+typedef struct __attribute__ ((__packed__)) pldm_req_rde_multipart_send_t
+{
+    pldm_base_header_t header;
+    uint32_t xfer_handle;
+    pldm_rde_oper_id_t oper_id;
+    pldm_rde_xfer_flag_t xfer_flag;
+    uint32_t next_xfer_handle;
+    uint32_t data_len;
+    uint8_t data[];
+}
+pldm_req_rde_multipart_send_t;
+
+typedef struct __attribute__ ((__packed__)) pldm_resp_rde_multipart_send_t
+{
+    pldm_base_header_t header;
+    pldm_cmd_cc_t completion_code;
+    pldm_rde_xfer_oper_t xfer_oper;
+}
+pldm_resp_rde_multipart_send_t;
 
 
 // PLDM_REDFISH_CMD_RDE_MULTIPART_RECEIVE

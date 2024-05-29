@@ -13,8 +13,10 @@ typedef struct pldm_terminus_t
     pldm_tid_changed_t pldm_tid_changed_callback;
     void* pldm_tid_changed_args; 
     uint32_t next_xfer_handle;
-    pldm_multipart_outcomming_t* multipart_out_first;
-    pldm_multipart_outcomming_t* multipart_out_last;
+    pldm_multipart_t* multipart_out_first;
+    pldm_multipart_t* multipart_out_last;
+    pldm_multipart_t* multipart_in_first;
+    pldm_multipart_t* multipart_in_last;
 }
 pldm_terminus_t;
 

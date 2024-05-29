@@ -108,6 +108,215 @@ uint32_t pldm_terminus_next_xfer_handle(
 }
 
 
+pldm_multipart_t*  pldm_terminus_add_multipart_outcomming(
+    pldm_transport_t* transport,
+    uint8_t data[],
+    uint16_t data_len
+)
+{
+    if(transport == NULL)
+    {
+        return NULL;
+    }
+
+    if(transport->endpoint == NULL || data == NULL || data_len == 0)
+    {
+        return NULL;
+    }
+
+    pldm_terminus_t* endpoint = transport->endpoint;
+
+    pldm_multipart_t* new_outcomming = pldm_multipart_outcomming_init(
+        endpoint,
+        data_len, 
+        data
+    );
+
+    if(endpoint->multipart_out_first == NULL)
+    {
+        endpoint->multipart_out_first = new_outcomming;
+    }
+    else
+    {
+        pldm_multipart_set_next(endpoint->multipart_out_last, new_outcomming);
+    }
+
+    endpoint->multipart_out_last = new_outcomming;
+
+    return new_outcomming;
+}
+
+
+pldm_multipart_t*  pldm_terminus_add_multipart_incomming(
+    pldm_transport_t* transport,
+    uint32_t xfer_handle
+)
+{
+    if(transport == NULL)
+    {
+        return NULL;
+    }
+
+    if(transport->endpoint == NULL 
+    || xfer_handle == PLDM_MULTIPART_NULL_XFER_HANDLE
+    || xfer_handle == PLDM_MULTIPART_NOT_FINISHED_XFER_HANDLE)
+    {
+        return NULL;
+    }
+
+    pldm_terminus_t* endpoint = transport->endpoint;
+
+    pldm_multipart_t* new_incomming = pldm_multipart_incomming_init(
+        endpoint,
+        xfer_handle
+    );
+
+    if(endpoint->multipart_in_first == NULL)
+    {
+        endpoint->multipart_in_first = new_incomming;
+    }
+    else
+    {
+        pldm_multipart_set_next(endpoint->multipart_in_last, new_incomming);
+    }
+
+    endpoint->multipart_in_last = new_incomming;
+
+    return new_incomming;   
+}
+
+
+pldm_multipart_t* pldm_terminus_get_multipart(
+    pldm_transport_t* transport,
+    uint32_t xfer_handle,
+    bool is_outcomming
+)
+{
+    if(transport == NULL)
+    {
+        return NULL;
+    }
+
+    if(transport->endpoint == NULL)
+    {
+        return NULL;
+    }
+
+    pldm_terminus_t* endpoint = transport->endpoint;
+   
+    pldm_multipart_t* curr = NULL;
+
+    if(is_outcomming)
+    {
+        curr = endpoint->multipart_out_first;
+    }
+    else
+    {
+        curr = endpoint->multipart_in_first;
+    }
+
+
+    while(curr != NULL)
+    {
+        if(pldm_multipart_get_xfer_handle(curr) == xfer_handle)
+        {
+            return curr;
+        }
+
+        curr = pldm_multipart_get_next(curr);
+    }
+
+    return NULL;
+}
+
+
+void pldm_terminus_remove_multipart(
+    pldm_transport_t* transport,
+    uint32_t xfer_handle,
+    bool is_outcomming
+)
+{
+    if(transport == NULL)
+    {
+        return;
+    }
+
+    if(transport->endpoint == NULL)
+    {
+        return;
+    }
+
+    pldm_terminus_t* endpoint = transport->endpoint;
+   
+    pldm_multipart_t* prev = NULL;
+    pldm_multipart_t* curr = NULL;
+    
+
+    if(is_outcomming)
+    {
+        curr = endpoint->multipart_out_first;
+    }
+    else
+    {
+        curr = endpoint->multipart_in_first;
+    }
+
+    while(curr != NULL)
+    {
+        if(pldm_multipart_get_xfer_handle(curr) == xfer_handle)
+        {
+            break;
+        }
+
+        prev = curr;
+        curr = pldm_multipart_get_next(curr);
+    }
+
+    if(curr == NULL)
+    {
+        return;
+    }
+
+    if(prev != NULL)
+    {
+        pldm_multipart_set_next(
+            prev,
+            pldm_multipart_get_next(curr)
+        );
+    }
+    else
+    {
+        if(is_outcomming)
+        {
+            endpoint->multipart_out_first = pldm_multipart_get_next(curr);
+        }
+        else
+        {
+            endpoint->multipart_in_first = pldm_multipart_get_next(curr);
+        }
+    }
+
+    pldm_multipart_t** last_ref = NULL;
+
+    if(is_outcomming)
+    {
+        last_ref = &endpoint->multipart_out_last;
+    }
+    else
+    {
+        last_ref = &endpoint->multipart_in_last;
+    }
+
+    if(curr == *last_ref)
+    {
+        *last_ref = prev;
+    }
+    
+    pldm_multipart_destroy(curr);
+}
+
+
+/*
 pldm_multipart_outcomming_t*  pldm_terminus_add_multipart_outcomming(
     pldm_transport_t* transport,
     uint8_t data[],
@@ -235,6 +444,149 @@ pldm_multipart_outcomming_t* pldm_terminus_get_multipart_outcomming(
 
     return NULL;
 }
+
+
+
+
+
+
+pldm_multipart_incomming_t*  pldm_terminus_add_multipart_incomming(
+    pldm_transport_t* transport,
+    uint32_t xfer_handle
+)
+{
+    if(transport == NULL)
+    {
+        return NULL;
+    }
+
+    if(transport->endpoint == NULL 
+    || xfer_handle == PLDM_MULTIPART_NULL_XFER_HANDLE
+    || xfer_handle == PLDM_MULTIPART_NOT_FINISHED_XFER_HANDLE)
+    {
+        return NULL;
+    }
+
+    pldm_terminus_t* endpoint = transport->endpoint;
+
+    pldm_multipart_incomming_t* new_incomming = pldm_multipart_incomming_init(
+        endpoint,
+        xfer_handle
+    );
+
+    if(endpoint->multipart_in_first == NULL)
+    {
+        endpoint->multipart_in_first = new_incomming;
+    }
+    else
+    {
+        pldm_multipart_incomming_set_next(endpoint->multipart_in_last, new_incomming);
+    }
+
+    endpoint->multipart_in_last = new_incomming;
+
+    return new_incomming;
+}
+
+
+void pldm_terminus_remove_multipart_incomming(
+    pldm_transport_t* transport,
+    uint32_t xfer_handle 
+)
+{
+    if(transport == NULL)
+    {
+        return;
+    }
+
+    if(transport->endpoint == NULL)
+    {
+        return;
+    }
+
+    pldm_terminus_t* endpoint = transport->endpoint;
+   
+    pldm_multipart_incomming_t* prev = NULL;
+    pldm_multipart_incomming_t* curr = endpoint->multipart_in_first;
+
+    while(curr != NULL)
+    {
+        if(pldm_multipart_incomming_get_xfer_handle(curr) == xfer_handle)
+        {
+            break;
+        }
+
+        prev = curr;
+        curr = pldm_multipart_incomming_get_next(curr);
+    }
+
+    if(curr == NULL)
+    {
+        return;
+    }
+
+    if(prev != NULL)
+    {
+        pldm_multipart_incomming_set_next(
+            prev,
+            pldm_multipart_incomming_get_next(curr)
+        );
+    }
+    else
+    {
+        endpoint->multipart_in_first = pldm_multipart_incomming_get_next(curr);
+    }
+
+    if(curr == endpoint->multipart_in_last)
+    {
+        endpoint->multipart_in_last = prev;
+    }
+
+    pldm_multipart_incomming_destroy(curr);
+}
+
+
+pldm_multipart_incomming_t* pldm_terminus_get_multipart_incomming(
+    pldm_transport_t* transport,
+    uint32_t xfer_handle 
+)
+{
+    if(transport == NULL)
+    {
+        return NULL;
+    }
+
+    if(transport->endpoint == NULL)
+    {
+        return NULL;
+    }
+
+    pldm_terminus_t* endpoint = transport->endpoint;
+   
+    pldm_multipart_incomming_t* curr = endpoint->multipart_in_first;
+
+    while(curr != NULL)
+    {
+        if(pldm_multipart_incomming_get_xfer_handle(curr) == xfer_handle)
+        {
+            return curr;
+        }
+
+        curr = pldm_multipart_incomming_get_next(curr);
+    }
+
+    return NULL;
+}
+*/
+
+
+
+
+
+
+
+
+
 
 
 /*

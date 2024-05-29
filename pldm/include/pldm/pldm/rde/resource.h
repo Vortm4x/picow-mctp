@@ -23,10 +23,6 @@ bej_encoding_t* pldm_rde_resource_get_encoding(
     pldm_rde_resource_t* resource
 );
 
-uint32_t pldm_rde_resource_get_encoding_size(
-    pldm_rde_resource_t* resource
-);
-
 pldm_pdr_header_t* pldm_rde_resource_get_pdr(
     pldm_rde_resource_t* resource
 );

@@ -13,7 +13,6 @@ typedef struct pldm_rde_provider_t
     pldm_rde_resource_t* last_resource;
     pldm_rde_operation_t* first_operation;
     pldm_rde_operation_t* last_operation;
-    pldm_rde_oper_id_t next_oper_id;
     uint16_t oper_count;
 }
 pldm_rde_provider_t;
@@ -230,7 +229,45 @@ pldm_rde_resource_t* pldm_rde_provider_get_resource(
     return NULL;
 }
 
+pldm_rde_operation_t* pldm_rde_provider_add_operation(
+    pldm_rde_resource_t* resource,
+    pldm_rde_oper_id_t oper_id,
+    pldm_rde_oper_type_t type,
+    pldm_multipart_t* multipart
+)
+{
+    if(!pldm_rde_provider_is_init())
+    {
+        return NULL;
+    }
 
+    pldm_rde_operation_t* new_operation = pldm_rde_operation_init(
+        resource,
+        type,
+        oper_id,
+        multipart
+    );
+
+    if(new_operation == NULL)
+    {
+        return NULL;
+    }
+
+    if(rde_provider->first_operation == NULL)
+    {
+        rde_provider->first_operation = new_operation;
+    }
+    else
+    {
+        pldm_rde_operation_set_next(rde_provider->last_operation, new_operation);
+    }
+
+    rde_provider->last_operation = new_operation;
+    rde_provider->oper_count++;
+
+    return new_operation;
+}
+/*
 pldm_rde_operation_t* pldm_rde_provider_add_operation(
     pldm_rde_resource_t* resource,
     pldm_rde_oper_type_t type,
@@ -268,7 +305,7 @@ pldm_rde_operation_t* pldm_rde_provider_add_operation(
 
     return new_operation;
 }
-
+*/
 
 void pldm_rde_provider_remove_operation(
     pldm_rde_oper_id_t operation_id

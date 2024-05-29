@@ -147,115 +147,20 @@ uint8_t* bej_encoding_pack(
     size_t* data_len
 );
 
+bej_encoding_t* bej_encoding_retrieve(
+    bej_encoding_t* encoding,
+    uint8_t locator_data[],
+    size_t locator_data_size
+);
+
+void bej_encoding_update(
+    bej_encoding_t* encoding,
+    bej_encoding_t* update
+);
+
 void bej_encoding_destroy(
     bej_encoding_t* encoding
 );
-
-
-
-
-/*
-typedef struct bej_sflv_tuple_t
-{
-    bej_s_tuple_t* s_tuple;
-    bej_f_tuple_t* f_tuple;
-    bej_l_tuple_t* l_tuple;
-    void* sfl_tuple_data;
-    void* v_tuple_data;
-}
-bej_sflv_tuple_t;
-
-struct bej_entry_t;
-typedef struct bej_entry_t bej_entry_t;
-
-typedef struct bej_entry_t
-{
-    bej_sflv_tuple_t* value;
-    bej_entry_t* next;
-}
-bej_entry_t;
-*/
-
-
-/*
-typedef uint64_t nnint_t_t;
-
-typedef struct bej_s_tuple_t
-{
-    nnint_t_t seq : 63;
-    bool annotation : 1;
-}
-bej_s_tuple_t;
-
-typedef bej_f_tuple_t bej_f_tuple_t;
-
-typedef nnint_t_t bej_l_tuple_t;
-
-struct bej_sflv_tuple_t;
-typedef struct bej_sflv_tuple_t bej_sflv_tuple_t;
-
-typedef struct bej_entry_t bej_entry_t;
-typedef struct bej_entry_t
-{
-    bej_sflv_tuple_t* value;
-    bej_entry_t* next;
-}
-bej_entry_t;
-
-
-typedef void bej_null_t;
-
-typedef int64_t bej_integer_t;
-
-typedef nnint_t_t bej_enum_t;
-
-typedef char bej_string_t;
-
-typedef struct bej_real_t {
-    nnint_t_t whole_len;
-    bej_integer_t whole;
-    nnint_t_t lead_zero_count;
-    nnint_t_t fract;
-    nnint_t_t exponent_len;
-    bej_integer_t exponent;
-}
-bej_real_t;
-
-typedef bool bej_boolean_t;
-
-typedef uint8_t bej_bytestring_t;
-
-
-typedef struct bej_entry_t {
-
-}
-bej_entry_t;
-
-typedef struct bej_sflv_tuple_t bej_choice_t;
-
-typedef struct bej_sflv_tuple_t bej_choice_t;
-
-typedef struct bej_sflv_tuple_t
-{
-    bej_s_tuple_t s_tuple;
-    bej_f_tuple_t f_tuple;
-    bej_l_tuple_t l_tuple;
-    void* v_tuple;
-}
-bej_sflv_tuple_t;
-
-
-*/
-
-
-
-
-
-
-
-
-
-
 
 
 #endif // PLDM_RDE_BEJ_H

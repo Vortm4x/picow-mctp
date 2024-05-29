@@ -13,11 +13,42 @@ typedef struct pldm_rde_operation_t
     pldm_rde_oper_type_t type;
     pldm_rde_resource_t* resource;
     pldm_rde_operation_t* next;
-    pldm_multipart_outcomming_t* outcomming;
+    pldm_multipart_t* multipart;
+
+    // pldm_multipart_outcomming_t* outcomming;
 }
 pldm_rde_operation_t;
 
 
+pldm_rde_operation_t* pldm_rde_operation_init(
+    pldm_rde_resource_t* resource,
+    pldm_rde_oper_type_t type,
+    pldm_rde_oper_id_t id,
+    pldm_multipart_t* multipart
+)
+{
+    if(resource == NULL)
+    {
+        return NULL;
+    }
+
+    pldm_rde_operation_t* operation = malloc(sizeof(pldm_rde_operation_t));
+
+    if(operation != NULL)
+    {
+        memset(operation, 0, sizeof(pldm_rde_operation_t));
+
+        operation->resource = resource;
+        operation->type = type;
+        operation->id = id;
+        operation->status = RDE_OP_STATUS_INACTIVE;
+        operation->multipart = multipart;
+    }
+
+    return operation;
+}
+
+/*
 pldm_rde_operation_t* pldm_rde_operation_init(
     pldm_rde_resource_t* resource,
     pldm_rde_oper_type_t type,
@@ -46,7 +77,7 @@ pldm_rde_operation_t* pldm_rde_operation_init(
 
     return operation;
 }
-
+*/
 
 void pldm_rde_operation_destroy(
     pldm_rde_operation_t* operation
@@ -122,6 +153,19 @@ pldm_rde_resource_t* pldm_rde_operation_get_resource(
 }
 
 
+pldm_multipart_t* pldm_rde_operation_get_multipart(
+    pldm_rde_operation_t* operation
+)
+{
+    if(operation == NULL)
+    {
+        return NULL;
+    }
+
+    return operation->multipart;
+}
+
+/*
 pldm_multipart_outcomming_t* pldm_rde_operation_get_outcomming(
     pldm_rde_operation_t* operation
 )
@@ -133,7 +177,7 @@ pldm_multipart_outcomming_t* pldm_rde_operation_get_outcomming(
 
     return operation->outcomming;
 }
-
+*/
 
 pldm_rde_operation_t* pldm_rde_operation_get_next(
     pldm_rde_operation_t* operation

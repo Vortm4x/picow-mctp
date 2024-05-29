@@ -74,6 +74,13 @@ void handle_req_rde_operation_enumerate(
     void* args
 );
 
+void handle_req_rde_multipart_send(
+    pldm_transport_t* transport,
+    uint8_t* message,
+    size_t message_len,
+    void* args
+);
+
 void handle_req_rde_multipart_receive(
     pldm_transport_t* transport,
     uint8_t* message,

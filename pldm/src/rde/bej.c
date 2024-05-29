@@ -28,8 +28,7 @@ static void bej_value_destroy(
 
 
 static bej_encoding_t* bej_value_unpack(
-    uint8_t encoding_data[],
-    size_t* encoding_offset,
+    FILE* bej_stream,
     size_t encoding_stream_size,
     uint8_t major_schema_dict[],
     bej_dict_entry_header* entry_headers,
@@ -38,22 +37,13 @@ static bej_encoding_t* bej_value_unpack(
 );
 
 static void bej_sfl_tuple_unpack(
-    uint8_t encoding_data[],
-    size_t* encoding_offset,
+    FILE* bej_stream,
     bej_sfl_tuple_t* sfl_tuple
 );
 
 static void bej_nnint_unpack(
-    uint8_t encoding_data[],
-    size_t* encoding_offset,
+    FILE* bej_stream,
     nnint_t* nnint
-);
-
-static void bej_data_unpack(
-    uint8_t encoding_data[],
-    size_t* encoding_offset,
-    void* data,
-    size_t data_len
 );
 
 static bej_dict_entry_header* bej_dict_get_child_entry_headers(
@@ -196,6 +186,11 @@ static void bej_nnint_pack(
     nnint_t* nnint
 );
 
+static bej_encoding_t* bej_value_retrieve(
+    bej_encoding_t* encoding,
+    FILE* locator_stream,
+    size_t locator_stream_size
+);
 
 bej_encoding_t* bej_encoding_unpack(
     uint8_t encoding_data[],
@@ -203,25 +198,29 @@ bej_encoding_t* bej_encoding_unpack(
     uint8_t major_schema_dict[]
 )
 {
-    bej_encoding_header_t* bej_header = (bej_encoding_header_t*)encoding_data;
-    size_t encoding_offset = sizeof(bej_encoding_header_t);
-
-    if(bej_header->version.version != BEJ_VERSION_1_0_0
-    && bej_header->version.version != BEJ_VERSION_1_1_0)
+    if(encoding_data_size < sizeof(bej_encoding_header_t))
     {
         return NULL;
     }
 
-    if(bej_header->schema_class != RDE_SCHEMA_CLASS_MAJOR)
+    FILE* bej_stream = fmemopen(encoding_data, encoding_data_size, "r");
+    fseek(bej_stream, 0, SEEK_SET);
+
+    bej_encoding_header_t bej_header = {};
+    fread(&bej_header, sizeof(bej_header), 1, bej_stream);
+
+    if((bej_header.version.version != BEJ_VERSION_1_0_0
+    && bej_header.version.version != BEJ_VERSION_1_1_0)
+    || bej_header.schema_class != RDE_SCHEMA_CLASS_MAJOR)
     {
-        return NULL;   
+        fclose(bej_stream);
+        return NULL;
     }
 
     bej_dict_entry_header* entry_header = (bej_dict_entry_header*)(major_schema_dict + sizeof(bej_dict_header_t));
 
     bej_encoding_t* encoding = bej_value_unpack(
-        encoding_data,
-        &encoding_offset,
+        bej_stream,
         encoding_data_size,
         major_schema_dict,
         entry_header,
@@ -229,17 +228,14 @@ bej_encoding_t* bej_encoding_unpack(
         false
     );
 
-    size_t len = 0;
-    uint8_t* data = bej_encoding_pack(encoding, &len);
-    free(data);
+    fclose(bej_stream);
 
     return encoding;
 }
 
 
 bej_encoding_t* bej_value_unpack(
-    uint8_t encoding_data[],
-    size_t* encoding_offset,
+    FILE* bej_stream,
     size_t encoding_stream_size,
     uint8_t major_schema_dict[],
     bej_dict_entry_header* entry_headers,
@@ -248,7 +244,7 @@ bej_encoding_t* bej_value_unpack(
 )
 {
     bej_sfl_tuple_t sfl_tuple = {};
-    bej_sfl_tuple_unpack(encoding_data, encoding_offset, &sfl_tuple);
+    bej_sfl_tuple_unpack(bej_stream, &sfl_tuple);
 
     bej_dict_entry_header* curr_entry_header = NULL;
 
@@ -284,7 +280,7 @@ bej_encoding_t* bej_value_unpack(
         case BEJ_TYPE_SET:
         {
             nnint_t set_len;
-            bej_nnint_unpack(encoding_data, encoding_offset, &set_len);
+            bej_nnint_unpack(bej_stream, &set_len);
 
             bej_collection_t* set = bej_collection_init(set_len);
 
@@ -296,8 +292,7 @@ bej_encoding_t* bej_value_unpack(
             for(nnint_t i = 0; i < set->len; ++i)
             {
                 set->entries[i] = bej_value_unpack(
-                    encoding_data, 
-                    encoding_offset, 
+                    bej_stream, 
                     encoding_stream_size,
                     major_schema_dict,
                     child_entry_headers,
@@ -313,7 +308,7 @@ bej_encoding_t* bej_value_unpack(
         case BEJ_TYPE_ARRAY:
         {
             nnint_t array_len;
-            bej_nnint_unpack(encoding_data, encoding_offset, &array_len);
+            bej_nnint_unpack(bej_stream, &array_len);
 
             bej_collection_t* array = bej_collection_init(array_len);
 
@@ -325,7 +320,7 @@ bej_encoding_t* bej_value_unpack(
             for(nnint_t i = 0; i < array->len; ++i)
             {
                 array->entries[i] = bej_value_unpack(
-                    encoding_data, encoding_offset,
+                    bej_stream,
                     encoding_stream_size,
                     major_schema_dict,
                     child_entry_headers,
@@ -350,12 +345,7 @@ bej_encoding_t* bej_value_unpack(
 
             if(encoding->value->size > 0)
             {
-                bej_data_unpack(
-                    encoding_data, 
-                    encoding_offset, 
-                    encoding->value->data,
-                    sfl_tuple.l_tuple
-                );
+                fread(encoding->value->data, sfl_tuple.l_tuple, 1, bej_stream);
             }
         }
         break;
@@ -373,37 +363,20 @@ bej_encoding_t* bej_value_unpack(
 
 
 void bej_sfl_tuple_unpack(
-    uint8_t encoding_data[],
-    size_t* encoding_offset,
+    FILE* bej_stream,
     bej_sfl_tuple_t* sfl_tuple
 )
 {
     memset(sfl_tuple, 0, sizeof(bej_sfl_tuple_t));
 
-    bej_nnint_unpack(
-        encoding_data, 
-        encoding_offset, 
-        &sfl_tuple->s_tuple.nnint
-    );
-
-    bej_data_unpack(
-        encoding_data, 
-        encoding_offset, 
-        &sfl_tuple->f_tuple,
-        sizeof(bej_f_tuple_t)
-    );
-
-    bej_nnint_unpack(
-        encoding_data, 
-        encoding_offset, 
-        &sfl_tuple->l_tuple
-    );
+    bej_nnint_unpack(bej_stream, &sfl_tuple->s_tuple.nnint);
+    fread(&sfl_tuple->f_tuple, sizeof(bej_f_tuple_t), 1, bej_stream);
+    bej_nnint_unpack(bej_stream, &sfl_tuple->l_tuple);
 }
 
 
 void bej_nnint_unpack(
-    uint8_t encoding_data[],
-    size_t* encoding_offset,
+    FILE* bej_stream,
     nnint_t* nnint
 )
 {
@@ -411,31 +384,8 @@ void bej_nnint_unpack(
 
     uint8_t len = 0;
 
-    bej_data_unpack(
-        encoding_data, 
-        encoding_offset, 
-        &len,
-        sizeof(uint8_t)
-    );
-
-    bej_data_unpack(
-        encoding_data, 
-        encoding_offset, 
-        nnint,
-        len
-    );
-}
-
-
-void bej_data_unpack(
-    uint8_t encoding_data[],
-    size_t* encoding_offset,
-    void* data,
-    size_t data_len
-)
-{                
-    memcpy(data, &encoding_data[*encoding_offset], data_len);
-    *encoding_offset += data_len;
+    fread(&len, sizeof(uint8_t), 1, bej_stream);
+    fread(nnint, sizeof(uint8_t), len, bej_stream);
 }
 
 
@@ -563,4 +513,156 @@ void bej_nnint_pack(
 
     fwrite(&len, sizeof(uint8_t), 1, bej_stream);
     fwrite(data, sizeof(uint8_t), len, bej_stream);
+}
+
+bej_encoding_t* bej_encoding_retrieve(
+    bej_encoding_t* encoding,
+    uint8_t locator_data[],
+    size_t locator_data_size
+)
+{
+    FILE* locator_stream = fmemopen(locator_data, locator_data_size, "r");
+    fseek(locator_stream, 0, SEEK_SET);
+
+    nnint_t locator_size = 0;
+    bej_nnint_unpack(locator_stream, &locator_size);
+
+    if(ftell(locator_stream) + locator_size != locator_data_size)
+    {
+        return NULL;
+    }
+    
+    bej_encoding_t* node = bej_value_retrieve(
+        encoding,
+        locator_stream,
+        locator_data_size
+    );
+
+    fclose(locator_stream);
+
+    return node;
+}
+
+bej_encoding_t* bej_value_retrieve(
+    bej_encoding_t* encoding,
+    FILE* locator_stream,
+    size_t locator_stream_size
+)
+{
+    bej_collection_t root = {
+        .entries = &encoding,
+        .len = 1,
+    };
+
+    bej_collection_t* curr_collection = &root;
+    bej_encoding_t* curr_entry = encoding;
+    bej_s_tuple_t s_tuple = {
+        .nnint = 0,
+    };
+
+    while ((size_t)ftell(locator_stream) < locator_stream_size)
+    {
+        switch (curr_entry->format.bej_type)
+        {
+            case BEJ_TYPE_ARRAY:
+            case BEJ_TYPE_SET:
+            {
+                bej_nnint_unpack(locator_stream, &s_tuple.nnint);
+
+                nnint_t i = 0;
+
+                while (i < curr_collection->len)
+                {
+                    if(curr_collection->entries[i]->seq_num.seq == s_tuple.seq)
+                    {
+                        break;
+                    }
+
+                    i += 1;
+                }
+
+                if(i < curr_collection->len)
+                {
+                    curr_entry = curr_collection->entries[i];
+                    curr_collection = curr_entry->collection;
+                }
+                else
+                {
+                    return NULL;
+                }
+            }
+            break;
+        
+            default:
+            {
+                return NULL;
+            }
+        }
+    }
+
+    return curr_entry;
+}
+
+
+void bej_collection_update(
+    bej_collection_t* encoding,
+    bej_collection_t* update
+)
+{
+    for(nnint_t i = 0; i < encoding->len; ++i)
+    {
+        for(nnint_t j = 0; j < update->len; ++j)
+        {
+            bej_encoding_update(encoding->entries[i], update->entries[j]);
+        }
+    }
+}
+
+
+void bej_encoding_update(
+    bej_encoding_t* encoding,
+    bej_encoding_t* update
+)
+{
+    if(encoding == NULL || update == NULL)
+    {
+        return;
+    }
+
+    if(encoding->seq_num.nnint == update->seq_num.nnint
+    && encoding->format.bej_type == update->format.bej_type
+    && !encoding->format.read_only)
+    {
+        switch (encoding->format.bej_type)
+        {
+            case BEJ_TYPE_ARRAY:
+            case BEJ_TYPE_SET:
+            {
+                bej_collection_update(encoding->collection, update->collection);
+            }
+            break;
+
+            case BEJ_TYPE_NULL:
+            case BEJ_TYPE_INTEGER:
+            case BEJ_TYPE_ENUM:
+            case BEJ_TYPE_STRING:
+            case BEJ_TYPE_REAL:
+            case BEJ_TYPE_BOOLEAN:
+            case BEJ_TYPE_BYTE_STRING:
+            {
+                if(update->value->size > 0)
+                {
+                    bej_encoding_t temp = {};
+
+                    memcpy(&temp, encoding, sizeof(bej_encoding_t));
+                    memcpy(encoding, update, sizeof(bej_encoding_t));
+                    memcpy(update, &temp, sizeof(bej_encoding_t));
+                }
+            }
+            break;
+
+            default:
+            {}
+        }
+    }
 }

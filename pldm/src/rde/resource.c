@@ -68,26 +68,6 @@ bej_encoding_t* pldm_rde_resource_get_encoding(
     return resource->encoding;
 }
 
-uint32_t pldm_rde_resource_get_encoding_size(
-    pldm_rde_resource_t* resource
-)
-{
-    if(resource == NULL)
-    {
-        return 0;
-    }
-
-    uint32_t encoding_size = 0;
-
-    // bej_s_tuple_t* tuple_s = (bej_s_tuple_t*)(resource->encoding + 1);
-    // bej_f_tuple_t* tuple_f = (bej_f_tuple_t*)(tuple_s->seq.data + tuple_s->seq.len);
-    // bej_l_tuple_t* tuple_l = (bej_l_tuple_t*)(tuple_f + 1);
-
-    // memcpy(&encoding_size, tuple_l->len.data, tuple_l->len.len);
-
-    return encoding_size + sizeof(bej_encoding_header_t);
-}
-
 pldm_pdr_header_t* pldm_rde_resource_get_pdr(
     pldm_rde_resource_t* resource
 )
