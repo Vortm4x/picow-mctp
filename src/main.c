@@ -159,10 +159,6 @@ bool init_all()
     uart_set_format(uart_id, UART_DATA_BITS, UART_STOP_BITS, UART_PARITY);
     uart_set_fifo_enabled(uart_id, false);
 
-    // irq_set_exclusive_handler(UART_IRQ, uart_isr);
-    // irq_set_enabled(UART_IRQ, true);    
-    // uart_set_irq_enables(uart_id, true, false);
-
     gpio_init(DHT11_PIN);
 
     return true;

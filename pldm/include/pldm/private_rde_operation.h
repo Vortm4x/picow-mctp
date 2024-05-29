@@ -10,14 +10,6 @@ pldm_rde_operation_t* pldm_rde_operation_init(
     pldm_multipart_t* multipart
 );
 
-/*
-pldm_rde_operation_t* pldm_rde_operation_init(
-    pldm_rde_resource_t* resource,
-    pldm_rde_oper_type_t type,
-    pldm_rde_oper_id_t id,
-    pldm_multipart_outcomming_t* outcomming
-);
-*/
 void pldm_rde_operation_destroy(
     pldm_rde_operation_t* operation
 );

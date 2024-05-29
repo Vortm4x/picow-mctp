@@ -36,7 +36,4 @@ uint8_t dht11_temperature_data[]  = {
   0x43, 0x65, 0x6c, 0x00
 };
 
-
-
-
 #endif // REDFISH_RESOURCES_H

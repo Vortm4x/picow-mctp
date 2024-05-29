@@ -36,13 +36,6 @@ pldm_rde_operation_t* pldm_rde_provider_add_operation(
     pldm_multipart_t* multipart
 );
 
-/*
-pldm_rde_operation_t* pldm_rde_provider_add_operation(
-    pldm_rde_resource_t* resource,
-    pldm_rde_oper_type_t type,
-    pldm_multipart_outcomming_t* outcomming
-);
-*/
 void pldm_rde_provider_remove_operation(
     pldm_rde_oper_id_t operation_id
 );

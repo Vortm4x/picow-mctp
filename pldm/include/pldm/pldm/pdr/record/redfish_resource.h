@@ -38,39 +38,4 @@ pldm_pdr_redfish_res_major_t* pldm_pdr_redfish_resource_major_schema(
     pldm_pdr_base_redfish_resource_t* pdr
 );
 
-/*
-utf8_str_t* pldm_pdr_redfish_res_name_ptr(
-    pldm_base_redfish_resource_t* pdr
-);
-
-utf8_str_t* pldm_pdr_redfish_res_sub_uri_ptr(
-    pldm_base_redfish_resource_t* pdr
-);
-
-uint16_t pldm_pdr_redfish_res_add_res_count(
-    pldm_base_redfish_resource_t* pdr
-);
-
-pldm_pdr_redfish_add_res_t* pldm_pdr_redfish_res_add_res_first(
-    pldm_base_redfish_resource_t* pdr
-);
-
-pldm_pdr_redfish_add_res_t* pldm_pdr_redfish_res_add_res_next(
-    pldm_pdr_redfish_add_res_t* add_res
-);
-
-uint16_t pldm_pdr_redfish_res_oem_name_count(
-    pldm_pdr_redfish_res_major_t* major_schema
-);
-
-utf8_str_t* pldm_pdr_redfish_res_oem_name_first(
-    pldm_pdr_redfish_res_major_t* major_schema
-);
-
-utf8_str_t* pldm_pdr_redfish_res_oem_name_next(
-    utf8_str_t* oem_name
-);
-*/
-
-
 #endif // PLDM_PDR_REDFISH_RESOURCE_H
