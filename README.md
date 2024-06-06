@@ -192,7 +192,7 @@ mctp address add 0x08 dev mctpserial0
 
 ```mctpserial0``` is a network device name, ```0x08``` is an MCTP address of this BMC device. You can choose any available and non-reserved.
 
-### Assign MCTP EID to the bus owner
+### Assign MCTP EID to the endpoint
 Before following actions, MCTP responder (i.e. RDE device) must be switched on and connected with requester by peripherals. It should be done by <b>mctpd</b> daemon using DBus interface.
 ``` bash
 busctl introspect xyz.openbmc_project.MCTP /xyz/openbmc_project/mctp
