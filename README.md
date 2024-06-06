@@ -1,6 +1,6 @@
 # Raspberry Pi Pico RDE Firmware
 
-## Open BMC Setup (Raspberry Pi)
+## Open BMC image build (Raspberry Pi)
 
 ### Build Open BMC image
 
@@ -206,7 +206,6 @@ au.com.CodeConstruct.MCTP           interface -          -             -
 .AssignEndpointStatic               method    sayy       yisb          -
 .LearnEndpoint                      method    say        yisb          -
 .SetupEndpoint                      method    say        yisb          -
-
 ```
 
 
@@ -221,10 +220,12 @@ If the responder EID is 0, new EID should be assigned.
 ```bash
 busctl call xyz.openbmc_project.MCTP /xyz/openbmc_project/mctp au.com.CodeConstruct.MCTP SetupEndpoint say mctpserial0 0
 ```
-
-```SetupEndpoint``` assignes a dynamic EID to the responder. BMC device will assign the least number available. Parameters are the same as in ```LearnEndpoint``` function. If endoint is already recognized by BMC device, no action will be performed. On success returns following values (example):
+On success returns following values (example):
 ```yisb 9 1 "/xyz/openbmc_project/mctp/1/9" true```
-where yisb - signature, 9 (y or byte) - EID, 1 (i or integer) - network ID, "/xyz/openbmc_project/mctp/1/9" (s or UTF-8 string) - D-Bus object path, 
+where yisb - signature, 9 (y or byte) - EID, 1 (i or integer) - network ID, "/xyz/openbmc_project/mctp/1/9" (s or UTF-8 string) - D-Bus object path, true (b or boolean) - is EID already known.
+
+
+```SetupEndpoint``` assignes a dynamic EID to the responder. BMC device will assign the least number available. Parameters are the same as in ```LearnEndpoint``` function. If endoint is already recognized by BMC device, no action will be performed.
 
 
 To assign new EID to existing endpoint use ```AssignEndpoint```:
@@ -235,6 +236,110 @@ This call will assign 0x20 as new endpoint. Parameters are the same as in ```Set
 ```bash
 busctl call xyz.openbmc_project.MCTP /xyz/openbmc_project/mctp au.com.CodeConstruct.MCTP AssignEndpointStatic say mctpserial0 0 0x20
 ```
-The same as ```AssignEndpoint``` call, but the endpoint is not dynamic. 
+The same as ```AssignEndpoint``` call, but the endpoint is not dynamic. Functions response parameters in ```SetupEndpoint```, ```AssignEndpoint``` and ```AssignEndpointStatic``` are the same. First three response parameters are the same as in ```SetupEndpoint``` (EID, network ID, object path). The fourth parameter (boolean) tells if a new EID was assigned.
 
-After EID assignment, add route assigned address 
+
+After EID assignment, add route to assigned address. For example:
+```bash
+mctp route add 0x09 via mctpserial0
+```
+where 0x09 - responder EID, mctpserial0 - bus owner interface name.
+
+Then, check if all required routes are available:
+```
+mctp route
+```
+
+Example output:
+```
+eid min 9 max 9 net 1 dev mctpserial0 mtu 0
+eid min 8 max 8 net 1 dev mctpserial0 mtu 0
+```
+On success, two or more routes will appear - the first line is a responder route, the second one belongs to the bus owner.
+
+After successful setup, introspect the EID D-Bus object
+```bash
+busctl introspect xyz.openbmc_project.MCTP /xyz/openbmc_project/mctp/1/9
+```
+
+Example output:
+```
+NAME                                TYPE      SIGNATURE RESULT/VALUE                           FLAGS
+au.com.CodeConstruct.MCTP.Endpoint  interface -         -                                      -
+.Remove                             method    -         -                                      -
+.SetMTU                             method    u         -                                      -
+org.freedesktop.DBus.Introspectable interface -         -                                      -
+.Introspect                         method    -         s                                      -
+org.freedesktop.DBus.Peer           interface -         -                                      -
+.GetMachineId                       method    -         s                                      -
+.Ping                               method    -         -                                      -
+org.freedesktop.DBus.Properties     interface -         -                                      -
+.Get                                method    ss        v                                      -
+.GetAll                             method    s         a{sv}                                  -
+.Set                                method    ssv       -                                      -
+.PropertiesChanged                  signal    sa{sv}as  -                                      -
+xyz.openbmc_project.Common.UUID     interface -         -                                      -
+.UUID                               property  s         "9a2d7206-cc60-8c87-cb46-0267e519c1e4" const
+xyz.openbmc_project.MCTP.Endpoint   interface -         -                                      -
+.EID                                property  y         9                                      const
+.NetworkId                          property  i         1                                      const
+.SupportedMessageTypes              property  ay        2 0 1                                  const
+```
+This function sends ```Get endpoint UUID``` and ```Get message type support``` commands to the MCTP responder. After that MCTP endpoint is ready to use.
+
+
+To perform PLDM endpoint discovery, restart ```pldmd``` daemon:
+```bash
+systemctl restart pldmd
+```
+
+After that, check the daemon logs:
+```bash
+journalctl -u pldmd -b
+```
+
+If there is an MCTP endpoint, that supports PLDM messaging, BMC device will send following request messages:
+- Get PLDM commands \(type 0\)
+- Get PLDM version \(type 0\)
+- Get PDR \(type 2\)
+
+<i><u>Note</u>: Unfortunately, there is no RDE requester support in Open BMC (this feature is in development). Therefore, all RDE requests will be done manually using ```pldmtool```</i>
+
+
+## Quick MCTP + PLDM endpoint setup
+### Full setup
+<u>Tab 1</u>
+```bash
+mctp link serial /dev/serial0
+```
+
+<u>Tab 2</u>
+```bash
+mctp link set mctpserial0 up
+mctp address add 0x08 dev mctpserial0
+
+busctl call xyz.openbmc_project.MCTP /xyz/openbmc_project/mctp au.com.CodeConstruct.MCTP LearnEndpoint say mctpserial0 0
+
+busctl call xyz.openbmc_project.MCTP /xyz/openbmc_project/mctp au.com.CodeConstruct.MCTP SetupEndpoint say mctpserial0 0
+
+mctp route add 0x09 via mctpserial0
+
+busctl call xyz.openbmc_project.MCTP /xyz/openbmc_project/mctp au.com.CodeConstruct.MCTP LearnEndpoint say mctpserial0 0
+
+busctl introspect xyz.openbmc_project.MCTP /xyz/openbmc_project/mctp/1/9
+
+systemctl restart pldmd
+```
+
+
+### Responder restart
+```bash
+busctl call xyz.openbmc_project.MCTP /xyz/openbmc_project/mctp au.com.CodeConstruct.MCTP LearnEndpoint say mctpserial0 0
+
+busctl call xyz.openbmc_project.MCTP /xyz/openbmc_project/mctp au.com.CodeConstruct.MCTP SetupEndpoint say mctpserial0 0
+
+busctl introspect xyz.openbmc_project.MCTP /xyz/openbmc_project/mctp/1/9
+```
+
+### Requester restart
+<i>The same as full setup, but without ```SetupEndpoint``` D-Bus call</i>
